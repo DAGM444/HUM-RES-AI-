@@ -11,3 +11,10 @@ export type View =
   | 'employee-directory'
   | 'performance-reports-list'
   | 'data-analytics';
+
+/** Navigation target / view state — supports employeeId parameter for employee-profile */
+export type ViewState =
+  | { view: Exclude<View, 'employee-profile'>; employeeId?: never }
+  | { view: 'employee-profile'; employeeId?: number };
+
+export type NavTarget = ViewState;
