@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -35,9 +35,14 @@ import {
   AlertTriangle,
   CheckCircle,
   Copy,
-  Save
+  Save,
+  Loader2,
+  ExternalLink
 } from 'lucide-react';
 import { Separator } from './ui/separator';
+import { authHeader } from '../lib/auth';
+
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:5000';
 
 // Email template data
 const emailTemplates = {
@@ -162,6 +167,22 @@ export function EmailTemplates() {
   const [recipientEmail, setRecipientEmail] = useState(employeeData.email);
   const [ccEmails, setCcEmails] = useState('hr@company.com');
   const [isModified, setIsModified] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [sentSuccessModalOpen, setSentSuccessModalOpen] = useState(false);
+  const [sentEmailInfo, setSentEmailInfo] = useState<{
+    to: string;
+    subject: string;
+    messageId?: string;
+    previewUrl?: string | false;
+  } | null>(null);
+
+  // Auto-dismiss toast
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   // Template variable replacements
   const replaceTemplateVariables = (text: string) => {
@@ -219,16 +240,58 @@ export function EmailTemplates() {
     setIsModified(false);
   };
 
-  const handleSendEmail = () => {
-    console.log('Sending email:', {
-      to: recipientEmail,
-      cc: ccEmails,
-      subject: replaceTemplateVariables(emailSubject),
-      content: replaceTemplateVariables(emailContent),
-      template: selectedTemplate
-    });
-    setSendConfirmOpen(false);
-    // Here you would integrate with your email service
+  const handleSendEmail = async () => {
+    const finalSubject = replaceTemplateVariables(emailSubject);
+    const finalBody = replaceTemplateVariables(emailContent);
+
+    try {
+      setIsSending(true);
+      const res = await fetch(`${API_BASE}/api/email/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeader(),
+        },
+        body: JSON.stringify({
+          to: recipientEmail,
+          cc: ccEmails || undefined,
+          subject: finalSubject,
+          body: finalBody,
+          metadata: {
+            template: selectedTemplate,
+            employeeId: employeeData.id,
+            employeeName: employeeData.name,
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to dispatch email (${res.status})`);
+      }
+
+      const result = await res.json();
+      setSendConfirmOpen(false);
+      setSentEmailInfo({
+        to: recipientEmail,
+        subject: finalSubject,
+        messageId: result.messageId,
+        previewUrl: result.previewUrl,
+      });
+      setSentSuccessModalOpen(true);
+      setToast({
+        type: 'success',
+        message: `Email dispatched successfully to ${recipientEmail}!`,
+      });
+    } catch (err) {
+      console.error('Error dispatching email:', err);
+      setToast({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Failed to dispatch email',
+      });
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const processedContent = replaceTemplateVariables(emailContent);
@@ -236,6 +299,24 @@ export function EmailTemplates() {
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {toast && (
+        <div
+          className={`fixed top-4 right-4 z-50 rounded-lg px-4 py-2.5 text-sm shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2 ${
+            toast.type === 'error'
+              ? 'bg-destructive text-destructive-foreground'
+              : 'bg-primary text-primary-foreground'
+          }`}
+        >
+          {toast.type === 'error' ? (
+            <AlertTriangle className="h-4 w-4" />
+          ) : (
+            <CheckCircle className="h-4 w-4" />
+          )}
+          <span>{toast.message}</span>
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-3xl">Email Templates</h1>
@@ -517,15 +598,20 @@ export function EmailTemplates() {
                     </div>
 
                     <DialogFooter>
-                      <Button variant="outline" onClick={() => setSendConfirmOpen(false)}>
+                      <Button variant="outline" onClick={() => setSendConfirmOpen(false)} disabled={isSending}>
                         Cancel
                       </Button>
                       <Button 
                         onClick={handleSendEmail}
+                        disabled={isSending}
                         variant={selectedTemplate === 'termination' ? 'destructive' : 'default'}
                       >
-                        <Send className="h-4 w-4 mr-2" />
-                        Confirm & Send Email
+                        {isSending ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4 mr-2" />
+                        )}
+                        {isSending ? 'Sending Email...' : 'Confirm & Send Email'}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -594,6 +680,54 @@ export function EmailTemplates() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Transmission Success Modal */}
+      <Dialog open={sentSuccessModalOpen} onOpenChange={setSentSuccessModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-600">
+              <CheckCircle className="h-5 w-5" />
+              Email Dispatched Successfully
+            </DialogTitle>
+            <DialogDescription>
+              Your email communication has been processed and dispatched by the backend mail service.
+            </DialogDescription>
+          </DialogHeader>
+
+          {sentEmailInfo && (
+            <div className="space-y-3 py-2 text-sm">
+              <div className="rounded-lg bg-muted p-3 space-y-1">
+                <p><span className="font-semibold">Recipient:</span> {sentEmailInfo.to}</p>
+                <p><span className="font-semibold">Subject:</span> {sentEmailInfo.subject}</p>
+                {sentEmailInfo.messageId && (
+                  <p className="text-xs text-muted-foreground"><span className="font-semibold">Message ID:</span> {sentEmailInfo.messageId}</p>
+                )}
+              </div>
+
+              {sentEmailInfo.previewUrl && (
+                <div className="rounded-md border p-3 bg-blue-50/50">
+                  <p className="text-xs font-semibold text-blue-700 mb-1">Ethereal Sandbox Inbox</p>
+                  <a
+                    href={sentEmailInfo.previewUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-blue-600 hover:underline flex items-center gap-1 font-mono break-all"
+                  >
+                    <span>View dispatched email preview</span>
+                    <ExternalLink className="h-3 w-3 inline shrink-0" />
+                  </a>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button onClick={() => setSentSuccessModalOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

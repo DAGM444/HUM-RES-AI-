@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -34,319 +34,377 @@ import {
   X, 
   Filter, 
   Search, 
-  Calendar, 
-  User, 
   FileText, 
   AlertTriangle,
   Clock,
   CheckCircle,
   XCircle,
   Eye,
-  MoreHorizontal
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { Textarea } from './ui/textarea';
+import { getToken, authHeader } from '../lib/auth';
 
-// Mock data for pending actions
-const pendingActionsData = [
-  {
-    id: 'PA001',
-    employeeId: 'EMP001',
-    employeeName: 'Sarah Johnson',
-    employeeAvatar: 'https://images.unsplash.com/photo-1494790108755-2616b2e7d55f?w=150&h=150&fit=crop&crop=face',
-    actionType: 'fire',
-    reason: 'Consistent poor performance despite multiple warnings and improvement plans',
-    initiatedBy: 'David Chen',
-    initiatorRole: 'Engineering Manager',
-    dateSubmitted: '2024-12-20',
-    reportDate: '2024-12-15',
-    priority: 'high',
-    status: 'pending',
-    supportingDocuments: ['Performance Review Q4.pdf', 'Warning Letter.pdf'],
-    additionalNotes: 'Employee has been under performance improvement plan for 3 months with minimal progress.'
-  },
-  {
-    id: 'PA002',
-    employeeId: 'EMP045',
-    employeeName: 'Michael Rodriguez',
-    employeeAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-    actionType: 'review',
-    reason: 'Exceptional performance - recommend for promotion consideration',
-    initiatedBy: 'Jennifer Martinez',
-    initiatorRole: 'HR Manager',
-    dateSubmitted: '2024-12-18',
-    reportDate: '2024-12-10',
-    priority: 'medium',
-    status: 'pending',
-    supportingDocuments: ['Performance Review Q4.pdf'],
-    additionalNotes: 'Outstanding contributions to the recent product launch. Team consistently praises leadership skills.'
-  },
-  {
-    id: 'PA003',
-    employeeId: 'EMP023',
-    employeeName: 'Lisa Wang',
-    employeeAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
-    actionType: 'review',
-    reason: 'Attendance issues and missed deadlines',
-    initiatedBy: 'Tom Anderson',
-    initiatorRole: 'Product Manager',
-    dateSubmitted: '2024-12-17',
-    reportDate: '2024-12-12',
-    priority: 'medium',
-    status: 'pending',
-    supportingDocuments: ['Attendance Report.pdf', 'Project Timeline.pdf'],
-    additionalNotes: 'Recent personal issues may be affecting work performance. Recommend counseling support.'
-  },
-  {
-    id: 'PA004',
-    employeeId: 'EMP067',
-    employeeName: 'Alex Thompson',
-    employeeAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-    actionType: 'fire',
-    reason: 'Violation of company policy regarding harassment',
-    initiatedBy: 'Jennifer Martinez',
-    initiatorRole: 'HR Manager',
-    dateSubmitted: '2024-12-19',
-    reportDate: '2024-12-16',
-    priority: 'high',
-    status: 'pending',
-    supportingDocuments: ['Incident Report.pdf', 'Witness Statements.pdf', 'Investigation Summary.pdf'],
-    additionalNotes: 'Multiple complaints filed. Investigation confirmed policy violations. Immediate action required.'
-  },
-  {
-    id: 'PA005',
-    employeeId: 'EMP089',
-    employeeName: 'Emma Davis',
-    employeeAvatar: 'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=150&h=150&fit=crop&crop=face',
-    actionType: 'review',
-    reason: 'Quarterly performance check-in',
-    initiatedBy: 'David Chen',
-    initiatorRole: 'Engineering Manager',
-    dateSubmitted: '2024-12-16',
-    reportDate: '2024-12-14',
-    priority: 'low',
-    status: 'pending',
-    supportingDocuments: ['Performance Review Q4.pdf'],
-    additionalNotes: 'Regular quarterly review. Performance is meeting expectations.'
-  }
-];
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:5000';
 
-// Mock data for decision history
-const decisionHistory = [
-  {
-    id: 'PA_HIST_001',
-    employeeName: 'John Smith',
-    actionType: 'fire',
-    decision: 'approved',
-    decidedBy: 'Robert Wilson',
-    decidedDate: '2024-12-15',
-    reason: 'Repeated policy violations',
-    notes: 'Severance package approved. Exit interview scheduled.'
-  },
-  {
-    id: 'PA_HIST_002',
-    employeeName: 'Maria Garcia',
-    actionType: 'review',
-    decision: 'approved',
-    decidedBy: 'Susan Lee',
-    decidedDate: '2024-12-14',
-    reason: 'Promotion consideration',
-    notes: 'Promoted to Senior Developer. Salary increase approved.'
-  },
-  {
-    id: 'PA_HIST_003',
-    employeeName: 'Kevin Brown',
-    actionType: 'review',
-    decision: 'rejected',
-    decidedBy: 'Robert Wilson',
-    decidedDate: '2024-12-12',
-    reason: 'Performance improvement needed',
-    notes: 'Rejected termination request. Extended improvement plan by 60 days.'
-  },
-  {
-    id: 'PA_HIST_004',
-    employeeName: 'Jennifer Lee',
-    actionType: 'fire',
-    decision: 'approved',
-    decidedBy: 'Susan Lee',
-    decidedDate: '2024-12-10',
-    reason: 'Budget constraints',
-    notes: 'Position eliminated due to restructuring. Offered internal transfer options.'
-  }
-];
+interface TaskEmployee {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  department: string;
+  avatar: string;
+  status: string;
+}
+
+interface TaskItem {
+  id: number;
+  title: string;
+  status: string; // 'PENDING' | 'APPROVED' | 'REJECTED'
+  actionType: string; // 'fire' | 'review'
+  reason: string | null;
+  priority: string | null; // 'high' | 'medium' | 'low'
+  dueDate: string;
+  urgency: string;
+  type: string;
+  score: number | null;
+  department: string | null;
+  initiatedBy: string | null;
+  initiatorRole: string | null;
+  decidedBy: string | null;
+  decidedDate: string | null;
+  decisionNotes: string | null;
+  supportingDocs: string | null;
+  createdAt: string;
+  employeeId: number;
+  assignedTo: TaskEmployee;
+}
 
 interface PendingActionsProps {
   onNavigateToEmailTemplates?: () => void;
 }
 
 export function PendingActions({ onNavigateToEmailTemplates }: PendingActionsProps) {
-  const [selectedAction, setSelectedAction] = useState<string>('');
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
   const [actionFilter, setActionFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
   const [initiatorFilter, setInitiatorFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [decisionDialog, setDecisionDialog] = useState<{open: boolean, action: any, decision: 'approve' | 'reject' | null}>({
+
+  const [decisionDialog, setDecisionDialog] = useState<{
+    open: boolean;
+    action: TaskItem | null;
+    decision: 'approve' | 'reject' | null;
+  }>({
     open: false,
     action: null,
     decision: null
   });
   const [decisionNotes, setDecisionNotes] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Filter and search functionality
+  // ---- Fetch Tasks ----
+  const fetchTasks = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/tasks`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeader()
+        }
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error ?? `HTTP ${res.status}`);
+      }
+      const data = await res.json() as TaskItem[];
+      setTasks(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to fetch tasks');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  // ---- Auto dismiss toast ----
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  // ---- Data partitions ----
+  const pendingActions = useMemo(() => {
+    return tasks.filter(t => t.status.toUpperCase() === 'PENDING');
+  }, [tasks]);
+
+  const decisionHistory = useMemo(() => {
+    return tasks.filter(t => 
+      t.status.toUpperCase() === 'APPROVED' || t.status.toUpperCase() === 'REJECTED'
+    );
+  }, [tasks]);
+
+  // ---- Filter and search functionality ----
   const filteredActions = useMemo(() => {
-    return pendingActionsData.filter(action => {
-      const matchesSearch = action.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          action.reason.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          action.initiatedBy.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesActionType = actionFilter === 'all' || action.actionType === actionFilter;
-      const matchesPriority = priorityFilter === 'all' || action.priority === priorityFilter;
-      const matchesInitiator = initiatorFilter === 'all' || action.initiatedBy === initiatorFilter;
+    return pendingActions.filter(action => {
+      const empName = action.assignedTo?.name || '';
+      const reasonText = action.reason || action.title || '';
+      const initiator = action.initiatedBy || '';
+
+      const matchesSearch = 
+        empName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        reasonText.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        initiator.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const normActionType = (action.actionType || 'review').toLowerCase();
+      const matchesActionType = actionFilter === 'all' || normActionType === actionFilter;
+
+      const normPriority = (action.priority || action.urgency || 'medium').toLowerCase();
+      const matchesPriority = priorityFilter === 'all' || normPriority === priorityFilter;
+
+      const matchesInitiator = initiatorFilter === 'all' || initiator === initiatorFilter;
 
       return matchesSearch && matchesActionType && matchesPriority && matchesInitiator;
     });
-  }, [searchQuery, actionFilter, priorityFilter, initiatorFilter]);
+  }, [pendingActions, searchQuery, actionFilter, priorityFilter, initiatorFilter]);
+
+  const uniqueInitiators = useMemo(() => {
+    const set = new Set<string>();
+    pendingActions.forEach(a => {
+      if (a.initiatedBy) set.add(a.initiatedBy);
+    });
+    return Array.from(set);
+  }, [pendingActions]);
 
   const getActionBadge = (actionType: string) => {
-    const variants = {
-      fire: 'destructive' as const,
-      review: 'default' as const
-    };
-    return <Badge variant={variants[actionType as keyof typeof variants]}>{actionType}</Badge>;
-  };
-
-  const getPriorityBadge = (priority: string) => {
-    const variants = {
-      high: 'destructive' as const,
-      medium: 'default' as const,
-      low: 'secondary' as const
-    };
-    return <Badge variant={variants[priority as keyof typeof variants]}>{priority}</Badge>;
-  };
-
-  const getDecisionBadge = (decision: string) => {
-    const variants = {
-      approved: 'default' as const,
-      rejected: 'secondary' as const
-    };
-    const icons = {
-      approved: <CheckCircle className="h-3 w-3 mr-1" />,
-      rejected: <XCircle className="h-3 w-3 mr-1" />
-    };
+    const isFire = actionType.toLowerCase() === 'fire';
     return (
-      <Badge variant={variants[decision as keyof typeof variants]} className="flex items-center">
-        {icons[decision as keyof typeof icons]}
-        {decision}
+      <Badge variant={isFire ? 'destructive' : 'default'}>
+        {isFire ? 'Termination' : 'Review'}
       </Badge>
     );
   };
 
-  const handleDecision = (action: any, decision: 'approve' | 'reject') => {
-    setDecisionDialog({ open: true, action, decision });
+  const getPriorityBadge = (priority: string) => {
+    const p = priority.toLowerCase();
+    const variant = p === 'high' ? 'destructive' : p === 'medium' ? 'default' : 'secondary';
+    return <Badge variant={variant as any}>{priority.toUpperCase()}</Badge>;
   };
 
-  const confirmDecision = () => {
-    if (decisionDialog.action && decisionDialog.decision) {
-      console.log(`${decisionDialog.decision === 'approve' ? 'Approving' : 'Rejecting'} action:`, decisionDialog.action.id);
-      console.log('Decision notes:', decisionNotes);
-      
-      // Here you would typically make an API call to save the decision
-      // For now, we'll just close the dialog
+  const getDecisionBadge = (decision: string) => {
+    const isApproved = decision.toUpperCase() === 'APPROVED';
+    return (
+      <Badge 
+        variant={isApproved ? 'default' : 'secondary'} 
+        className={`flex items-center w-fit ${isApproved ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-slate-500 text-white'}`}
+      >
+        {isApproved ? <CheckCircle className="h-3 w-3 mr-1" /> : <XCircle className="h-3 w-3 mr-1" />}
+        {isApproved ? 'Approved' : 'Rejected'}
+      </Badge>
+    );
+  };
+
+  const handleDecision = (action: TaskItem, decision: 'approve' | 'reject') => {
+    setDecisionDialog({ open: true, action, decision });
+    setDecisionNotes('');
+  };
+
+  const confirmDecision = async () => {
+    if (!decisionDialog.action || !decisionDialog.decision) return;
+    setIsSubmitting(true);
+    const actionId = decisionDialog.action.id;
+    const endpoint = decisionDialog.decision === 'approve' 
+      ? `${API_BASE}/api/tasks/${actionId}/approve` 
+      : `${API_BASE}/api/tasks/${actionId}/reject`;
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeader()
+        },
+        body: JSON.stringify({ notes: decisionNotes })
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error ?? 'Failed to update action request');
+      }
+
+      const isApprove = decisionDialog.decision === 'approve';
+      setToast(
+        isApprove
+          ? `Action approved for ${decisionDialog.action.assignedTo?.name || 'employee'}!`
+          : `Action rejected for ${decisionDialog.action.assignedTo?.name || 'employee'}.`
+      );
+
       setDecisionDialog({ open: false, action: null, decision: null });
       setDecisionNotes('');
-      
-      // If approved, suggest navigating to email templates
-      if (decisionDialog.decision === 'approve' && onNavigateToEmailTemplates) {
+      await fetchTasks();
+
+      // If approved, offer navigation to Email Templates
+      if (isApprove && onNavigateToEmailTemplates) {
         setTimeout(() => {
-          const shouldNavigate = window.confirm('Action approved successfully! Would you like to go to Email Templates to send the notification email?');
+          const shouldNavigate = window.confirm(
+            'Action approved successfully! Would you like to navigate to Email Templates to send notification emails?'
+          );
           if (shouldNavigate) {
             onNavigateToEmailTemplates();
           }
-        }, 500);
+        }, 300);
       }
+    } catch (e) {
+      setToast(`Error: ${e instanceof Error ? e.message : 'Action failed'}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const uniqueInitiators = [...new Set(pendingActionsData.map(action => action.initiatedBy))];
+  const parseSupportingDocs = (docs: string | null): string[] => {
+    if (!docs) return ['Performance Review.pdf'];
+    return docs.split(',').map(d => d.trim()).filter(Boolean);
+  };
+
+  // ---- Loading state ----
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center text-muted-foreground gap-3">
+        <Loader2 className="h-6 w-6 animate-spin" />
+        Loading pending actions…
+      </div>
+    );
+  }
+
+  // ---- Error state ----
+  if (error) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-4 text-muted-foreground">
+        <p className="text-destructive">{error}</p>
+        <Button variant="outline" size="sm" onClick={fetchTasks}>
+          <RefreshCw className="h-4 w-4 mr-2" /> Retry
+        </Button>
+      </div>
+    );
+  }
+
+  const highPriorityCount = pendingActions.filter(a => 
+    (a.priority || a.urgency || '').toLowerCase() === 'high'
+  ).length;
+
+  const terminationCount = pendingActions.filter(a => 
+    (a.actionType || '').toLowerCase() === 'fire' || a.title.toLowerCase().includes('terminat')
+  ).length;
+
+  const reviewCount = pendingActions.filter(a => 
+    (a.actionType || '').toLowerCase() === 'review' || a.title.toLowerCase().includes('review')
+  ).length;
 
   return (
     <div className="space-y-6">
+      {/* Toast notification */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 rounded-lg bg-primary text-primary-foreground px-4 py-2.5 text-sm shadow-lg animate-in fade-in slide-in-from-top-2">
+          {toast}
+        </div>
+      )}
+
       {/* Header */}
-      <div>
-        <h1 className="text-3xl">Pending Actions</h1>
-        <p className="text-muted-foreground">
-          Review and approve employee action requests requiring management approval
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Pending Actions</h1>
+          <p className="text-muted-foreground mt-1">
+            Review and approve employee action requests requiring management approval
+          </p>
+        </div>
+        <Button variant="outline" size="sm" onClick={fetchTasks} className="h-9 w-fit">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
+        </Button>
       </div>
 
       {/* Stats Overview */}
       <div className="grid gap-4 md:grid-cols-4">
-        <Card>
+        <Card className="shadow-sm">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-semibold">{pendingActionsData.length}</p>
-                <p className="text-sm text-muted-foreground">Total Pending</p>
+                <p className="text-3xl font-bold tracking-tight">{pendingActions.length}</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Pending</p>
               </div>
-              <Clock className="h-6 w-6 text-muted-foreground" />
+              <div className="h-10 w-10 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                <Clock className="h-5 w-5 text-slate-600 dark:text-slate-300" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-sm">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-semibold">
-                  {pendingActionsData.filter(a => a.priority === 'high').length}
-                </p>
-                <p className="text-sm text-muted-foreground">High Priority</p>
+                <p className="text-3xl font-bold tracking-tight text-red-600">{highPriorityCount}</p>
+                <p className="text-sm font-medium text-muted-foreground">High Priority</p>
               </div>
-              <AlertTriangle className="h-6 w-6 text-red-500" />
+              <div className="h-10 w-10 bg-red-50 dark:bg-red-950/40 rounded-lg flex items-center justify-center">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-sm">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-semibold">
-                  {pendingActionsData.filter(a => a.actionType === 'fire').length}
-                </p>
-                <p className="text-sm text-muted-foreground">Termination Requests</p>
+                <p className="text-3xl font-bold tracking-tight text-rose-600">{terminationCount}</p>
+                <p className="text-sm font-medium text-muted-foreground">Termination Requests</p>
               </div>
-              <XCircle className="h-6 w-6 text-red-500" />
+              <div className="h-10 w-10 bg-rose-50 dark:bg-rose-950/40 rounded-lg flex items-center justify-center">
+                <XCircle className="h-5 w-5 text-rose-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-sm">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-semibold">
-                  {pendingActionsData.filter(a => a.actionType === 'review').length}
-                </p>
-                <p className="text-sm text-muted-foreground">Review Requests</p>
+                <p className="text-3xl font-bold tracking-tight text-blue-600">{reviewCount}</p>
+                <p className="text-sm font-medium text-muted-foreground">Review Requests</p>
               </div>
-              <FileText className="h-6 w-6 text-blue-500" />
+              <div className="h-10 w-10 bg-blue-50 dark:bg-blue-950/40 rounded-lg flex items-center justify-center">
+                <FileText className="h-5 w-5 text-blue-600" />
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
       <Tabs defaultValue="pending" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="pending">Pending Actions</TabsTrigger>
-          <TabsTrigger value="history">Decision History</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 max-w-md">
+          <TabsTrigger value="pending">Pending Actions ({pendingActions.length})</TabsTrigger>
+          <TabsTrigger value="history">Decision History ({decisionHistory.length})</TabsTrigger>
         </TabsList>
 
+        {/* PENDING TAB */}
         <TabsContent value="pending" className="space-y-4">
           {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Filter className="h-5 w-5" />
+          <Card className="shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
                 Filters
               </CardTitle>
             </CardHeader>
@@ -354,18 +412,18 @@ export function PendingActions({ onNavigateToEmailTemplates }: PendingActionsPro
               <div className="flex flex-wrap gap-4">
                 <div className="flex-1 min-w-[200px]">
                   <div className="relative">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Search employees, reasons, or initiators..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-8"
+                      className="pl-9 h-9"
                     />
                   </div>
                 </div>
                 
                 <Select value={actionFilter} onValueChange={setActionFilter}>
-                  <SelectTrigger className="w-[150px]">
+                  <SelectTrigger className="w-[150px] h-9">
                     <SelectValue placeholder="Action Type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -376,7 +434,7 @@ export function PendingActions({ onNavigateToEmailTemplates }: PendingActionsPro
                 </Select>
 
                 <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                  <SelectTrigger className="w-[130px]">
+                  <SelectTrigger className="w-[130px] h-9">
                     <SelectValue placeholder="Priority" />
                   </SelectTrigger>
                   <SelectContent>
@@ -388,7 +446,7 @@ export function PendingActions({ onNavigateToEmailTemplates }: PendingActionsPro
                 </Select>
 
                 <Select value={initiatorFilter} onValueChange={setInitiatorFilter}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-[180px] h-9">
                     <SelectValue placeholder="Initiator" />
                   </SelectTrigger>
                   <SelectContent>
@@ -403,195 +461,233 @@ export function PendingActions({ onNavigateToEmailTemplates }: PendingActionsPro
           </Card>
 
           {/* Pending Actions Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Pending Requests ({filteredActions.length})</CardTitle>
+          <Card className="shadow-sm overflow-hidden">
+            <CardHeader className="border-b bg-muted/20">
+              <CardTitle className="text-lg">Pending Requests ({filteredActions.length})</CardTitle>
               <CardDescription>
                 Actions requiring approval from management
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Employee</TableHead>
-                    <TableHead>Action</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Initiated By</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Actions</TableHead>
+                  <TableRow className="bg-muted/40">
+                    <TableHead className="p-4">Employee</TableHead>
+                    <TableHead className="p-4">Action</TableHead>
+                    <TableHead className="p-4">Reason / Item</TableHead>
+                    <TableHead className="p-4">Initiated By</TableHead>
+                    <TableHead className="p-4">Priority</TableHead>
+                    <TableHead className="p-4">Date</TableHead>
+                    <TableHead className="p-4 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredActions.map((action) => (
-                    <TableRow key={action.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={action.employeeAvatar} alt={action.employeeName} />
-                            <AvatarFallback>
-                              {action.employeeName.split(' ').map(n => n[0]).join('')}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">{action.employeeName}</p>
-                            <p className="text-xs text-muted-foreground">{action.employeeId}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {getActionBadge(action.actionType)}
-                      </TableCell>
-                      <TableCell className="max-w-[250px]">
-                        <p className="truncate text-sm">{action.reason}</p>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="text-sm font-medium">{action.initiatedBy}</p>
-                          <p className="text-xs text-muted-foreground">{action.initiatorRole}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {getPriorityBadge(action.priority)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <p>Submitted: {new Date(action.dateSubmitted).toLocaleDateString()}</p>
-                          <p className="text-xs text-muted-foreground">
-                            Report: {new Date(action.reportDate).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="default"
-                            onClick={() => handleDecision(action, 'approve')}
-                          >
-                            <Check className="h-4 w-4 mr-1" />
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleDecision(action, 'reject')}
-                          >
-                            <X className="h-4 w-4 mr-1" />
-                            Reject
-                          </Button>
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button size="sm" variant="outline">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-2xl">
-                              <DialogHeader>
-                                <DialogTitle>Action Request Details</DialogTitle>
-                                <DialogDescription>
-                                  Complete information for {action.employeeName}
-                                </DialogDescription>
-                              </DialogHeader>
-                              <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <h4 className="font-medium">Employee Information</h4>
-                                    <p className="text-sm text-muted-foreground">
-                                      {action.employeeName} ({action.employeeId})
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <h4 className="font-medium">Action Type</h4>
-                                    {getActionBadge(action.actionType)}
-                                  </div>
-                                  <div>
-                                    <h4 className="font-medium">Initiated By</h4>
-                                    <p className="text-sm text-muted-foreground">
-                                      {action.initiatedBy} - {action.initiatorRole}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <h4 className="font-medium">Priority</h4>
-                                    {getPriorityBadge(action.priority)}
-                                  </div>
-                                </div>
-                                <div>
-                                  <h4 className="font-medium">Reason</h4>
-                                  <p className="text-sm text-muted-foreground">{action.reason}</p>
-                                </div>
-                                <div>
-                                  <h4 className="font-medium">Additional Notes</h4>
-                                  <p className="text-sm text-muted-foreground">{action.additionalNotes}</p>
-                                </div>
-                                <div>
-                                  <h4 className="font-medium">Supporting Documents</h4>
-                                  <div className="flex flex-wrap gap-2 mt-2">
-                                    {action.supportingDocuments.map((doc, index) => (
-                                      <Badge key={index} variant="outline">
-                                        <FileText className="h-3 w-3 mr-1" />
-                                        {doc}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                        </div>
+                  {filteredActions.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                        No pending actions matching criteria.
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    filteredActions.map((action) => {
+                      const emp = action.assignedTo;
+                      const priority = action.priority || action.urgency || 'medium';
+                      const actionType = action.actionType || 'review';
+                      const docs = parseSupportingDocs(action.supportingDocs);
+
+                      return (
+                        <TableRow key={action.id} className="hover:bg-muted/40 transition-colors">
+                          <TableCell className="p-4">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-9 w-9">
+                                <AvatarImage src={emp?.avatar} alt={emp?.name || 'Employee'} />
+                                <AvatarFallback>
+                                  {(emp?.name || 'EM').split(' ').map(n => n[0]).join('')}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium text-sm text-foreground">{emp?.name || 'Unknown'}</p>
+                                <p className="text-xs text-muted-foreground">#{action.employeeId} · {emp?.department || 'Staff'}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="p-4">
+                            {getActionBadge(actionType)}
+                          </TableCell>
+                          <TableCell className="p-4 max-w-[240px]">
+                            <p className="truncate text-sm font-medium text-foreground">{action.title}</p>
+                            {action.reason && (
+                              <p className="truncate text-xs text-muted-foreground mt-0.5">{action.reason}</p>
+                            )}
+                          </TableCell>
+                          <TableCell className="p-4">
+                            <div>
+                              <p className="text-sm font-medium">{action.initiatedBy || 'HR'}</p>
+                              <p className="text-xs text-muted-foreground">{action.initiatorRole || 'Management'}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="p-4">
+                            {getPriorityBadge(priority)}
+                          </TableCell>
+                          <TableCell className="p-4">
+                            <div className="text-xs text-muted-foreground space-y-0.5">
+                              <p>Due: <span className="text-foreground">{new Date(action.dueDate).toLocaleDateString()}</span></p>
+                              <p>Added: {new Date(action.createdAt).toLocaleDateString()}</p>
+                            </div>
+                          </TableCell>
+                          <TableCell className="p-4">
+                            <div className="flex items-center gap-2 justify-end">
+                              <Button
+                                size="sm"
+                                variant="default"
+                                className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700"
+                                onClick={() => handleDecision(action, 'approve')}
+                              >
+                                <Check className="h-3.5 w-3.5 mr-1" />
+                                Approve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="h-8 text-xs"
+                                onClick={() => handleDecision(action, 'reject')}
+                              >
+                                <X className="h-3.5 w-3.5 mr-1" />
+                                Reject
+                              </Button>
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                                    <Eye className="h-3.5 w-3.5" />
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-2xl">
+                                  <DialogHeader>
+                                    <DialogTitle>Action Request Details</DialogTitle>
+                                    <DialogDescription>
+                                      Complete request details for {emp?.name || 'Employee'}
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <div className="space-y-4 pt-2">
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div>
+                                        <h4 className="text-xs font-semibold uppercase text-muted-foreground">Employee</h4>
+                                        <p className="text-sm font-medium mt-1">
+                                          {emp?.name} (#{action.employeeId})
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">{emp?.role} · {emp?.department}</p>
+                                      </div>
+                                      <div>
+                                        <h4 className="text-xs font-semibold uppercase text-muted-foreground">Action Type</h4>
+                                        <div className="mt-1">{getActionBadge(actionType)}</div>
+                                      </div>
+                                      <div>
+                                        <h4 className="text-xs font-semibold uppercase text-muted-foreground">Initiated By</h4>
+                                        <p className="text-sm font-medium mt-1">
+                                          {action.initiatedBy || 'HR'} ({action.initiatorRole || 'Management'})
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <h4 className="text-xs font-semibold uppercase text-muted-foreground">Priority</h4>
+                                        <div className="mt-1">{getPriorityBadge(priority)}</div>
+                                      </div>
+                                    </div>
+                                    <div className="border-t pt-3">
+                                      <h4 className="text-xs font-semibold uppercase text-muted-foreground">Title &amp; Reason</h4>
+                                      <p className="text-sm font-medium mt-1">{action.title}</p>
+                                      {action.reason && (
+                                        <p className="text-sm text-muted-foreground mt-1">{action.reason}</p>
+                                      )}
+                                    </div>
+                                    <div className="border-t pt-3">
+                                      <h4 className="text-xs font-semibold uppercase text-muted-foreground">Supporting Documents</h4>
+                                      <div className="flex flex-wrap gap-2 mt-2">
+                                        {docs.map((doc, idx) => (
+                                          <Badge key={idx} variant="outline" className="flex items-center gap-1 text-xs">
+                                            <FileText className="h-3 w-3" />
+                                            {doc}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* DECISION HISTORY TAB */}
         <TabsContent value="history" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Decision History</CardTitle>
+          <Card className="shadow-sm overflow-hidden">
+            <CardHeader className="border-b bg-muted/20">
+              <CardTitle className="text-lg">Decision History ({decisionHistory.length})</CardTitle>
               <CardDescription>
-                Previous action decisions and their outcomes
+                Previous action decisions and their recorded outcomes
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Employee</TableHead>
-                    <TableHead>Action Type</TableHead>
-                    <TableHead>Decision</TableHead>
-                    <TableHead>Decided By</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Notes</TableHead>
+                  <TableRow className="bg-muted/40">
+                    <TableHead className="p-4">Employee</TableHead>
+                    <TableHead className="p-4">Action Type</TableHead>
+                    <TableHead className="p-4">Decision</TableHead>
+                    <TableHead className="p-4">Decided By</TableHead>
+                    <TableHead className="p-4">Date</TableHead>
+                    <TableHead className="p-4">Request / Reason</TableHead>
+                    <TableHead className="p-4">Notes</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {decisionHistory.map((decision) => (
-                    <TableRow key={decision.id}>
-                      <TableCell className="font-medium">{decision.employeeName}</TableCell>
-                      <TableCell>
-                        {getActionBadge(decision.actionType)}
-                      </TableCell>
-                      <TableCell>
-                        {getDecisionBadge(decision.decision)}
-                      </TableCell>
-                      <TableCell>{decision.decidedBy}</TableCell>
-                      <TableCell>
-                        {new Date(decision.decidedDate).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="max-w-[200px]">
-                        <p className="truncate text-sm">{decision.reason}</p>
-                      </TableCell>
-                      <TableCell className="max-w-[250px]">
-                        <p className="truncate text-sm text-muted-foreground">{decision.notes}</p>
+                  {decisionHistory.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                        No historical decisions recorded yet.
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    decisionHistory.map((decision) => (
+                      <TableRow key={decision.id} className="hover:bg-muted/40 transition-colors">
+                        <TableCell className="p-4 font-medium">
+                          {decision.assignedTo?.name || `Employee #${decision.employeeId}`}
+                        </TableCell>
+                        <TableCell className="p-4">
+                          {getActionBadge(decision.actionType || 'review')}
+                        </TableCell>
+                        <TableCell className="p-4">
+                          {getDecisionBadge(decision.status)}
+                        </TableCell>
+                        <TableCell className="p-4 text-sm font-medium">
+                          {decision.decidedBy || 'HR Management'}
+                        </TableCell>
+                        <TableCell className="p-4 text-sm text-muted-foreground">
+                          {decision.decidedDate 
+                            ? new Date(decision.decidedDate).toLocaleDateString() 
+                            : new Date(decision.dueDate).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="p-4 max-w-[200px]">
+                          <p className="truncate text-sm font-medium">{decision.title}</p>
+                          {decision.reason && (
+                            <p className="truncate text-xs text-muted-foreground mt-0.5">{decision.reason}</p>
+                          )}
+                        </TableCell>
+                        <TableCell className="p-4 max-w-[240px]">
+                          <p className="truncate text-sm text-muted-foreground">
+                            {decision.decisionNotes || 'No notes provided'}
+                          </p>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -600,9 +696,12 @@ export function PendingActions({ onNavigateToEmailTemplates }: PendingActionsPro
       </Tabs>
 
       {/* Decision Confirmation Dialog */}
-      <Dialog open={decisionDialog.open} onOpenChange={(open) => 
-        setDecisionDialog(prev => ({...prev, open}))
-      }>
+      <Dialog 
+        open={decisionDialog.open} 
+        onOpenChange={(open) => {
+          if (!isSubmitting) setDecisionDialog(prev => ({ ...prev, open }));
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -610,52 +709,62 @@ export function PendingActions({ onNavigateToEmailTemplates }: PendingActionsPro
             </DialogTitle>
             <DialogDescription>
               You are about to {decisionDialog.decision} the action request for{' '}
-              {decisionDialog.action?.employeeName}. Please provide additional notes if needed.
+              <strong className="text-foreground">{decisionDialog.action?.assignedTo?.name || 'this employee'}</strong>.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4">
-            <div className="p-4 border rounded-lg bg-muted/50">
-              <p className="text-sm font-medium">Action Details:</p>
-              <p className="text-sm text-muted-foreground">
-                {decisionDialog.action?.actionType === 'fire' ? 'Termination' : 'Review'} request for{' '}
-                {decisionDialog.action?.employeeName}
+          <div className="space-y-4 pt-2">
+            <div className="p-3.5 border rounded-lg bg-muted/40 space-y-1">
+              <p className="text-sm font-medium">Request Details:</p>
+              <p className="text-sm text-foreground">
+                {decisionDialog.action?.title}
               </p>
-              <p className="text-sm text-muted-foreground">
-                Reason: {decisionDialog.action?.reason}
-              </p>
+              {decisionDialog.action?.reason && (
+                <p className="text-xs text-muted-foreground">
+                  Reason: {decisionDialog.action.reason}
+                </p>
+              )}
             </div>
             
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <label className="text-sm font-medium">Decision Notes (Optional)</label>
               <Textarea
-                placeholder="Add any additional notes or instructions for this decision..."
+                placeholder="Add any notes or justification for this decision..."
                 value={decisionNotes}
                 onChange={(e) => setDecisionNotes(e.target.value)}
                 rows={3}
+                disabled={isSubmitting}
               />
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button 
               variant="outline" 
-              onClick={() => setDecisionDialog({open: false, action: null, decision: null})}
+              onClick={() => setDecisionDialog({ open: false, action: null, decision: null })}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
             <Button
               variant={decisionDialog.decision === 'approve' ? 'default' : 'destructive'}
+              className={decisionDialog.decision === 'approve' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}
               onClick={confirmDecision}
+              disabled={isSubmitting}
             >
-              {decisionDialog.decision === 'approve' ? (
+              {isSubmitting ? (
                 <>
-                  <Check className="h-4 w-4 mr-2" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving…
+                </>
+              ) : decisionDialog.decision === 'approve' ? (
+                <>
+                  <Check className="h-4 w-4 mr-1.5" />
                   Approve Request
                 </>
               ) : (
                 <>
-                  <X className="h-4 w-4 mr-2" />
+                  <X className="h-4 w-4 mr-1.5" />
                   Reject Request
                 </>
               )}

@@ -82,18 +82,28 @@ model SupervisorNote {
 }
 
 model Task {
-  id          Int      @id @default(autoincrement())
-  title       String
-  status      String   @default("Pending")
-  dueDate     DateTime
-  urgency     Urgency
-  type        TaskType
-  score       Float?
-  department  String?
+  id             Int       @id @default(autoincrement())
+  title          String
+  status         String    @default("PENDING")
+  actionType     String    @default("review")
+  reason         String?
+  priority       String?   @default("medium")
+  dueDate        DateTime
+  urgency        Urgency   @default(MEDIUM)
+  type           TaskType  @default(REVIEW)
+  score          Float?
+  department     String?
+  initiatedBy    String?   @default("HR Manager")
+  initiatorRole  String?   @default("Human Resources")
+  decidedBy      String?
+  decidedDate    DateTime?
+  decisionNotes  String?
+  supportingDocs String?
+  createdAt      DateTime  @default(now())
 
   // Relation to Employee
-  employeeId  Int
-  assignedTo  Employee @relation(fields: [employeeId], references: [id])
+  employeeId     Int
+  assignedTo     Employee  @relation(fields: [employeeId], references: [id])
 }
 
 model InboxMessage {
@@ -113,3 +123,19 @@ model CalendarEvent {
   eventDate DateTime
   attendee  String?
 }
+
+model Setting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model HRSettings {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique @default("global")
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

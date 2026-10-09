@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -27,8 +27,12 @@ import {
   UserCheck,
   UserX,
   Eye,
-  Edit3
+  Edit3,
+  Loader2
 } from 'lucide-react';
+import { authHeader } from '../lib/auth';
+
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:5000';
 
 // Mock settings data
 const initialSettings = {
@@ -107,8 +111,58 @@ interface HRSettingsProps {
 
 export function HRSettings({ onNavigateToProfile }: HRSettingsProps) {
   const [settings, setSettings] = useState(initialSettings);
+  const [savedSettings, setSavedSettings] = useState(initialSettings);
   const [activeTab, setActiveTab] = useState('performance');
   const [hasChanges, setHasChanges] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Auto-dismiss toast after 3.5 seconds
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  // Fetch settings from GET /api/settings on mount
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchSettings = async () => {
+      try {
+        setIsLoading(true);
+        const res = await fetch(`${API_BASE}/api/settings`, {
+          headers: {
+            ...authHeader(),
+          },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data) {
+            setSettings(data);
+            setSavedSettings(data);
+            setHasChanges(false);
+          }
+        } else {
+          console.error('Failed to load settings from server:', res.statusText);
+        }
+      } catch (err) {
+        console.error('Error fetching settings:', err);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchSettings();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const updateSetting = (section: string, key: string, value: any) => {
     setSettings(prev => ({
@@ -135,16 +189,49 @@ export function HRSettings({ onNavigateToProfile }: HRSettingsProps) {
     setHasChanges(true);
   };
 
-  const saveSettings = () => {
-    // Simulate save operation
-    console.log('Saving settings:', settings);
-    setHasChanges(false);
-    // Here you would typically send the settings to your backend
+  const saveSettings = async () => {
+    try {
+      setIsSaving(true);
+      const res = await fetch(`${API_BASE}/api/settings`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeader(),
+        },
+        body: JSON.stringify(settings),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to save settings (${res.status})`);
+      }
+
+      const updated = await res.json();
+      setSettings(updated);
+      setSavedSettings(updated);
+      setHasChanges(false);
+      setToast({
+        type: 'success',
+        message: 'HR settings saved and persisted successfully!',
+      });
+    } catch (err) {
+      console.error('Error saving settings:', err);
+      setToast({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Failed to save settings',
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const resetSettings = () => {
-    setSettings(initialSettings);
+    setSettings(savedSettings);
     setHasChanges(false);
+    setToast({
+      type: 'success',
+      message: 'Settings reset to last saved values.',
+    });
   };
 
   const renderPerformanceSettings = () => (
@@ -675,10 +762,36 @@ export function HRSettings({ onNavigateToProfile }: HRSettingsProps) {
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {toast && (
+        <div
+          className={`fixed top-4 right-4 z-50 rounded-lg px-4 py-2.5 text-sm shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2 ${
+            toast.type === 'error'
+              ? 'bg-destructive text-destructive-foreground'
+              : 'bg-primary text-primary-foreground'
+          }`}
+        >
+          {toast.type === 'error' ? (
+            <AlertTriangle className="h-4 w-4" />
+          ) : (
+            <CheckCircle className="h-4 w-4" />
+          )}
+          <span>{toast.message}</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1>HR Settings</h1>
+          <div className="flex items-center gap-3">
+            <h1>HR Settings</h1>
+            {isLoading && (
+              <Badge variant="outline" className="flex items-center gap-1.5 py-0.5 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Loading...
+              </Badge>
+            )}
+          </div>
           <p className="text-muted-foreground">
             Configure performance thresholds, scoring rules, and system preferences
           </p>
@@ -690,13 +803,17 @@ export function HRSettings({ onNavigateToProfile }: HRSettingsProps) {
               <span className="text-sm">Unsaved changes</span>
             </div>
           )}
-          <Button variant="outline" onClick={resetSettings} disabled={!hasChanges}>
+          <Button variant="outline" onClick={resetSettings} disabled={!hasChanges || isSaving}>
             <RotateCcw className="h-4 w-4 mr-2" />
             Reset
           </Button>
-          <Button onClick={saveSettings} disabled={!hasChanges}>
-            <Save className="h-4 w-4 mr-2" />
-            Save Changes
+          <Button onClick={saveSettings} disabled={!hasChanges || isSaving}>
+            {isSaving ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            {isSaving ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
       </div>

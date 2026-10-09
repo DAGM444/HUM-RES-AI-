@@ -4,6 +4,7 @@ import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import { AlertTriangle, Users, TrendingUp, FileText, CheckCircle, Clock, Calendar, AlertCircle, ChevronRight, Settings, MessageCircle, Star } from 'lucide-react';
+import { getToken } from '../lib/auth';
 
 interface DashboardProps {
   onNavigateToProfile?: () => void;
@@ -29,7 +30,7 @@ interface Employee {
 interface Task {
   id: number;
   title: string;
-  assignedTo: string;
+  assignedTo: string | { id?: number; name?: string; department?: string };
   status: string;
   dueDate: string;
   urgency: string;
@@ -68,10 +69,13 @@ export function Dashboard({
   useEffect(() => {
     async function fetchDashboardMetrics() {
       try {
+        const token = getToken();
+        const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+
         const [empRes, taskRes, eventRes] = await Promise.all([
-          fetch('http://localhost:5000/api/employees'),
-          fetch('http://localhost:5000/api/tasks'),
-          fetch('http://localhost:5000/api/events')
+          fetch('http://localhost:5000/api/employees', { headers: authHeaders }),
+          fetch('http://localhost:5000/api/tasks', { headers: authHeaders }),
+          fetch('http://localhost:5000/api/events', { headers: authHeaders })
         ]);
 
         const empData = await empRes.json();
@@ -233,9 +237,15 @@ export function Dashboard({
                   <div className="flex-shrink-0">{getActionIcon(task.type)}</div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <p className="font-medium truncate">{task.assignedTo}</p>
-                      {task.department && (
-                        <Badge variant="outline" className="text-xs">{task.department}</Badge>
+                      <p className="font-medium truncate">
+                        {typeof task.assignedTo === 'object' && task.assignedTo !== null
+                          ? (task.assignedTo as any).name || 'Assigned'
+                          : task.assignedTo}
+                      </p>
+                      {(task.department || (typeof task.assignedTo === 'object' && (task.assignedTo as any)?.department)) && (
+                        <Badge variant="outline" className="text-xs">
+                          {task.department || (task.assignedTo as any)?.department}
+                        </Badge>
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground">{task.title}</p>
