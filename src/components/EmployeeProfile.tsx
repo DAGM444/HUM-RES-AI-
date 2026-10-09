@@ -23,6 +23,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { getToken, getStoredUser } from '../lib/auth';
+import { useParams } from 'react-router-dom';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:5000';
 
@@ -126,13 +127,15 @@ export function EmployeeProfile({ employeeId }: EmployeeProfileProps) {
   const [actionLoading, setActionLoading] = useState(false);
   const [toast, setToast]                 = useState<string | null>(null);
 
+  const { id: routeId } = useParams<{ id: string }>();
+
   // ---- Fetch employee detail ----
   const fetchEmployee = async () => {
     setLoading(true);
     setError(null);
     try {
       const storedUser = getStoredUser();
-      let targetId = employeeId ?? storedUser?.employeeId;
+      let targetId = employeeId ?? (routeId ? Number(routeId) : storedUser?.employeeId);
 
       if (!targetId) {
         // If neither prop nor user has an employeeId (e.g. admin), query first available employee
@@ -169,7 +172,7 @@ export function EmployeeProfile({ employeeId }: EmployeeProfileProps) {
   useEffect(() => {
     fetchEmployee();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [employeeId]);
+  }, [employeeId, routeId]);
 
   // ---- Auto-dismiss toast ----
   useEffect(() => {

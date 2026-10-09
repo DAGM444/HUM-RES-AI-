@@ -12,8 +12,9 @@ import {
   AlertTriangle,
   Building2,
   Mail,
-  MessageCircle
-} from "lucide-react";
+  MessageCircle,
+} from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import {
   Sidebar,
@@ -26,156 +27,173 @@ import {
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
-} from "./ui/sidebar";
+} from './ui/sidebar';
 
-// Menu items
+// Primary application navigation items
 const items = [
   {
-    title: "Home",
+    title: 'Home',
     icon: Home,
-    action: null
+    path: '/dashboard',
   },
   {
-    title: "HR Assistant",
+    title: 'HR Assistant',
     icon: MessageCircle,
-    action: "employee-chatbot"
+    path: '/chatbot',
   },
   {
-    title: "Search",
+    title: 'Search',
     icon: Search,
-    action: null
+    path: '/employees',
   },
   {
-    title: "Inbox",
+    title: 'Inbox',
     icon: Inbox,
-    action: "hr-inbox"
+    path: '/inbox',
   },
   {
-    title: "Employee Directory",
+    title: 'Employee Directory',
     icon: Users,
-    action: "employee-directory"
+    path: '/employees',
   },
   {
-    title: "Calendar",
+    title: 'Calendar',
     icon: Calendar,
-    action: "hr-calendar"
+    path: '/calendar',
   },
   {
-    title: "Settings",
+    title: 'Settings',
     icon: Settings,
-    action: "hr-settings"
+    path: '/settings',
   },
 ];
 
+// HR function-specific navigation items
 const hrItems = [
   {
-    title: "Employee Directory",
+    title: 'Employee Directory',
     icon: Users,
-    action: null
+    path: '/employees',
   },
   {
-    title: "Performance Reports",
+    title: 'Performance Reports',
     icon: FileText,
-    action: "performance-reports-list"
+    path: '/reports',
   },
   {
-    title: "Analytics",
+    title: 'Analytics',
     icon: BarChart3,
-    action: "data-analytics"
+    path: '/analytics',
   },
   {
-    title: "Time & Attendance",
+    title: 'Time & Attendance',
     icon: Clock,
-    action: null
+    path: '/attendance',
   },
   {
-    title: "Approvals",
+    title: 'Approvals',
     icon: UserCheck,
-    action: "pending-actions"
+    path: '/pending-actions',
   },
   {
-    title: "Email Templates",
+    title: 'Email Templates',
     icon: Mail,
-    action: "email-templates"
+    path: '/email-templates',
   },
   {
-    title: "Incidents",
+    title: 'Incidents',
     icon: AlertTriangle,
-    action: null
+    path: '/incidents',
   },
 ];
 
 interface AppSidebarProps {
-  onNavigate?: (view: string) => void;
+  onNavigate?: (path: string) => void;
 }
 
 export function AppSidebar({ onNavigate }: AppSidebarProps) {
-  const handleItemClick = (action: string) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleItemClick = (path: string) => {
+    navigate(path);
     if (onNavigate) {
-      onNavigate(action);
+      onNavigate(path);
     }
+  };
+
+  const isItemActive = (path: string) => {
+    if (path === '/dashboard') {
+      return location.pathname === '/' || location.pathname === '/dashboard';
+    }
+    return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
 
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-4 py-2">
-          <Building2 className="h-6 w-6" />
-          <span className="font-semibold">HR Management</span>
+        <div
+          className="flex items-center gap-2 px-4 py-2 cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => handleItemClick('/dashboard')}
+        >
+          <Building2 className="h-6 w-6 text-primary" />
+          <span className="font-semibold tracking-tight">HR Management</span>
         </div>
       </SidebarHeader>
-      
+
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Application</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    onClick={() => {
-                      if (item.action) {
-                        handleItemClick(item.action);
-                      }
-                    }}
-                    className={item.action ? "cursor-pointer" : undefined}
-                  >
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {items.map((item, index) => {
+                const active = isItemActive(item.path);
+                return (
+                  <SidebarMenuItem key={`app-${item.title}-${index}`}>
+                    <SidebarMenuButton
+                      onClick={() => handleItemClick(item.path)}
+                      className={`cursor-pointer transition-colors ${
+                        active ? 'bg-accent text-accent-foreground font-semibold' : ''
+                      }`}
+                    >
+                      <item.icon className={active ? 'text-primary' : undefined} />
+                      <span>{item.title}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        
+
         <SidebarGroup>
           <SidebarGroupLabel>HR Functions</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {hrItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    onClick={() => {
-                      if (item.action) {
-                        handleItemClick(item.action);
-                      }
-                    }}
-                    className={item.action ? "cursor-pointer" : undefined}
-                  >
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {hrItems.map((item, index) => {
+                const active = isItemActive(item.path);
+                return (
+                  <SidebarMenuItem key={`hr-${item.title}-${index}`}>
+                    <SidebarMenuButton
+                      onClick={() => handleItemClick(item.path)}
+                      className={`cursor-pointer transition-colors ${
+                        active ? 'bg-accent text-accent-foreground font-semibold' : ''
+                      }`}
+                    >
+                      <item.icon className={active ? 'text-primary' : undefined} />
+                      <span>{item.title}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      
+
       <SidebarFooter>
         <div className="px-4 py-2 text-xs text-muted-foreground">
-          HR Management v1.0
+          HR Management v1.3 (Phase 3)
         </div>
       </SidebarFooter>
     </Sidebar>

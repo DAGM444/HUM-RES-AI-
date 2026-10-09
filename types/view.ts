@@ -10,7 +10,9 @@ export type View =
   | 'hr-settings'
   | 'employee-directory'
   | 'performance-reports-list'
-  | 'data-analytics';
+  | 'data-analytics'
+  | 'attendance'
+  | 'incidents';
 
 /** Navigation target / view state — supports employeeId parameter for employee-profile */
 export type ViewState =

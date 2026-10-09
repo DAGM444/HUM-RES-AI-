@@ -647,6 +647,357 @@ app.post('/api/email/send', requireAuth, async (req: Request, res: Response) => 
   }
 });
 
+// ==========================================
+// 7. TIME & ATTENDANCE / LEAVE ENDPOINTS
+// ==========================================
+
+/**
+ * GET /api/attendance
+ * Query params: employeeId (optional), status (optional)
+ * Protected.
+ */
+app.get('/api/attendance', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { employeeId, status } = req.query as { employeeId?: string; status?: string };
+
+    const whereClause: Record<string, unknown> = {};
+    if (employeeId && !isNaN(Number(employeeId))) {
+      whereClause.employeeId = Number(employeeId);
+    }
+    if (status && status !== 'ALL') {
+      whereClause.status = status;
+    }
+
+    const leaveRequests = await prisma.leaveRequest.findMany({
+      where: whereClause,
+      include: {
+        employee: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            department: true,
+            role: true,
+            avatar: true,
+            status: true,
+          },
+        },
+      },
+      orderBy: { startDate: 'desc' },
+    });
+
+    res.json(leaveRequests);
+  } catch (error) {
+    console.error('Fetch attendance/leave error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/attendance
+ * Body: { employeeId, type, startDate, endDate, reason, status? }
+ * Protected.
+ */
+app.post('/api/attendance', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { employeeId, type, startDate, endDate, reason, status } = req.body;
+
+    if (!employeeId || !type || !startDate || !endDate) {
+      res.status(400).json({ error: 'employeeId, type, startDate, and endDate are required' });
+      return;
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      res.status(400).json({ error: 'Invalid startDate or endDate' });
+      return;
+    }
+
+    if (end < start) {
+      res.status(400).json({ error: 'endDate cannot be before startDate' });
+      return;
+    }
+
+    // Verify employee exists
+    const employee = await prisma.employee.findUnique({
+      where: { id: Number(employeeId) },
+    });
+    if (!employee) {
+      res.status(404).json({ error: 'Employee not found' });
+      return;
+    }
+
+    const newRequest = await prisma.leaveRequest.create({
+      data: {
+        employeeId: Number(employeeId),
+        type: String(type),
+        startDate: start,
+        endDate: end,
+        reason: reason ? String(reason).trim() : null,
+        status: status ? String(status).toUpperCase() : 'PENDING',
+      },
+      include: {
+        employee: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            department: true,
+            role: true,
+            avatar: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    res.status(201).json(newRequest);
+  } catch (error) {
+    console.error('Create leave request error:', error);
+    res.status(500).json({ error: 'Failed to create leave request' });
+  }
+});
+
+/**
+ * PATCH /api/attendance/:id
+ * Body: { status: 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'PENDING', reason?: string }
+ * Protected.
+ */
+app.patch('/api/attendance/:id', requireAuth, async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) {
+    res.status(400).json({ error: 'Invalid leave request ID' });
+    return;
+  }
+
+  const { status, reason } = req.body as { status?: string; reason?: string };
+
+  try {
+    const existing = await prisma.leaveRequest.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ error: 'Leave request not found' });
+      return;
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (status) {
+      const normalizedStatus = status.toUpperCase();
+      updateData.status = normalizedStatus;
+
+      // If approved, optionally adjust employee status if requested
+      if (normalizedStatus === 'APPROVED') {
+        const now = new Date();
+        if (existing.startDate <= now && existing.endDate >= now) {
+          await prisma.employee.update({
+            where: { id: existing.employeeId },
+            data: { status: Status.ON_LEAVE },
+          });
+        }
+      }
+    }
+    if (reason !== undefined) {
+      updateData.reason = reason;
+    }
+
+    const updated = await prisma.leaveRequest.update({
+      where: { id },
+      data: updateData,
+      include: {
+        employee: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            department: true,
+            role: true,
+            avatar: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Update leave request error:', error);
+    res.status(500).json({ error: 'Failed to update leave request' });
+  }
+});
+
+// ==========================================
+// 8. INCIDENTS ENDPOINTS
+// ==========================================
+
+/**
+ * GET /api/incidents
+ * Query params: employeeId (optional), severity (optional), status (optional)
+ * Protected.
+ */
+app.get('/api/incidents', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { employeeId, severity, status } = req.query as {
+      employeeId?: string;
+      severity?: string;
+      status?: string;
+    };
+
+    const whereClause: Record<string, unknown> = {};
+    if (employeeId && !isNaN(Number(employeeId))) {
+      whereClause.employeeId = Number(employeeId);
+    }
+    if (severity && severity !== 'ALL') {
+      whereClause.severity = severity;
+    }
+    if (status && status !== 'ALL') {
+      whereClause.status = status;
+    }
+
+    const incidents = await prisma.incidentRecord.findMany({
+      where: whereClause,
+      include: {
+        employee: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            department: true,
+            role: true,
+            avatar: true,
+            status: true,
+          },
+        },
+      },
+      orderBy: { incidentDate: 'desc' },
+    });
+
+    res.json(incidents);
+  } catch (error) {
+    console.error('Fetch incidents error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+/**
+ * POST /api/incidents
+ * Body: { employeeId, incidentDate, severity, description, status?, actionTaken?, reportedBy? }
+ * Protected.
+ */
+app.post('/api/incidents', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { employeeId, incidentDate, severity, description, status, actionTaken, reportedBy } = req.body;
+
+    if (!employeeId || !description || !severity) {
+      res.status(400).json({ error: 'employeeId, description, and severity are required' });
+      return;
+    }
+
+    const date = incidentDate ? new Date(incidentDate) : new Date();
+    if (isNaN(date.getTime())) {
+      res.status(400).json({ error: 'Invalid incidentDate' });
+      return;
+    }
+
+    const employee = await prisma.employee.findUnique({
+      where: { id: Number(employeeId) },
+    });
+    if (!employee) {
+      res.status(404).json({ error: 'Employee not found' });
+      return;
+    }
+
+    // Default reportedBy from authenticated user if not provided
+    const authUser = await prisma.user.findUnique({
+      where: { id: req.user!.userId },
+      include: { employee: true },
+    });
+    const finalReportedBy = reportedBy?.trim() || authUser?.employee?.name || authUser?.email || 'HR Department';
+
+    const newIncident = await prisma.incidentRecord.create({
+      data: {
+        employeeId: Number(employeeId),
+        incidentDate: date,
+        severity: String(severity),
+        description: String(description).trim(),
+        status: status ? String(status).toUpperCase() : 'OPEN',
+        actionTaken: actionTaken ? String(actionTaken).trim() : null,
+        reportedBy: finalReportedBy,
+      },
+      include: {
+        employee: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            department: true,
+            role: true,
+            avatar: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    res.status(201).json(newIncident);
+  } catch (error) {
+    console.error('Create incident error:', error);
+    res.status(500).json({ error: 'Failed to create incident record' });
+  }
+});
+
+/**
+ * PATCH /api/incidents/:id
+ * Body: { status?, actionTaken?, severity?, description? }
+ * Protected.
+ */
+app.patch('/api/incidents/:id', requireAuth, async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) {
+    res.status(400).json({ error: 'Invalid incident ID' });
+    return;
+  }
+
+  const { status, actionTaken, severity, description } = req.body;
+
+  try {
+    const existing = await prisma.incidentRecord.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ error: 'Incident record not found' });
+      return;
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (status) updateData.status = String(status).toUpperCase();
+    if (actionTaken !== undefined) updateData.actionTaken = actionTaken ? String(actionTaken).trim() : null;
+    if (severity) updateData.severity = String(severity);
+    if (description) updateData.description = String(description).trim();
+
+    const updated = await prisma.incidentRecord.update({
+      where: { id },
+      data: updateData,
+      include: {
+        employee: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            department: true,
+            role: true,
+            avatar: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Update incident error:', error);
+    res.status(500).json({ error: 'Failed to update incident record' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-});
+});

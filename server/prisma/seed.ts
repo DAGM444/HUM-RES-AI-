@@ -10,6 +10,8 @@ async function main() {
   await prisma.user.deleteMany();
   await prisma.supervisorNote.deleteMany();
   await prisma.task.deleteMany();
+  await prisma.leaveRequest.deleteMany();
+  await prisma.incidentRecord.deleteMany();
   await prisma.inboxMessage.deleteMany();
   await prisma.calendarEvent.deleteMany();
   await prisma.employee.deleteMany();
@@ -205,6 +207,90 @@ async function main() {
         type: 'Meeting',
         eventDate: new Date('2026-06-24T10:00:00'),
         attendee: 'Alex Rivera',
+      },
+    ],
+  });
+
+  // ------------------------------------------------------------------
+  // Seed Leave Requests
+  // ------------------------------------------------------------------
+  await prisma.leaveRequest.createMany({
+    data: [
+      {
+        employeeId: employee.id,
+        type: 'Parental Leave',
+        startDate: new Date('2026-07-01'),
+        endDate: new Date('2026-07-21'),
+        status: 'PENDING',
+        reason: 'Welcoming newborn child and primary bonding leave.',
+      },
+      {
+        employeeId: manager.id,
+        type: 'Annual Leave',
+        startDate: new Date('2026-08-10'),
+        endDate: new Date('2026-08-18'),
+        status: 'APPROVED',
+        reason: 'Summer family vacation.',
+      },
+      {
+        employeeId: employee.id,
+        type: 'Sick Leave',
+        startDate: new Date('2026-05-12'),
+        endDate: new Date('2026-05-14'),
+        status: 'APPROVED',
+        reason: 'Seasonal respiratory infection recovery.',
+      },
+      {
+        employeeId: employee.id,
+        type: 'Unpaid Leave',
+        startDate: new Date('2026-09-01'),
+        endDate: new Date('2026-09-05'),
+        status: 'REJECTED',
+        reason: 'Personal travel overlap with core sprint deliverables.',
+      },
+    ],
+  });
+
+  // ------------------------------------------------------------------
+  // Seed Incident Records
+  // ------------------------------------------------------------------
+  await prisma.incidentRecord.createMany({
+    data: [
+      {
+        employeeId: employee.id,
+        incidentDate: new Date('2026-06-15T14:30:00'),
+        severity: 'High',
+        description: 'Repeated non-compliance with data safety policies and unencrypted client data export.',
+        status: 'INVESTIGATING',
+        actionTaken: 'Formal security audit opened. Supervised credentials assigned.',
+        reportedBy: 'Sarah Jenkins (HR Director)',
+      },
+      {
+        employeeId: manager.id,
+        incidentDate: new Date('2026-05-20T09:15:00'),
+        severity: 'Low',
+        description: 'Scheduling conflict disagreement escalated during executive standup meeting.',
+        status: 'RESOLVED',
+        actionTaken: 'Informal mediation completed; calendar sync protocols clarified.',
+        reportedBy: 'Executive Board',
+      },
+      {
+        employeeId: employee.id,
+        incidentDate: new Date('2026-04-10T11:00:00'),
+        severity: 'Medium',
+        description: 'Missed mandatory annual compliance training deadline after 3 automated reminders.',
+        status: 'RESOLVED',
+        actionTaken: 'Training completed under supervisor monitoring; warning logged.',
+        reportedBy: 'Compliance Automated Sentinel',
+      },
+      {
+        employeeId: employee.id,
+        incidentDate: new Date('2026-06-28T16:45:00'),
+        severity: 'Critical',
+        description: 'Unauthorized privilege escalation probe detected on internal microservices cluster.',
+        status: 'OPEN',
+        actionTaken: 'SecOps containment in progress; HR disciplinary review pending.',
+        reportedBy: 'SecOps Automated Alert',
       },
     ],
   });

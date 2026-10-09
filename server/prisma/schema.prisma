@@ -69,7 +69,43 @@ model Employee {
 
   // Supervisor notes written about this employee
   supervisorNotes  SupervisorNote[]
+
+  // Relation to Leave Requests
+  leaveRequests    LeaveRequest[]
+
+  // Relation to Incident Records
+  incidentRecords  IncidentRecord[]
 }
+
+model LeaveRequest {
+  id         Int      @id @default(autoincrement())
+  employeeId Int
+  type       String   // e.g. "Annual Leave", "Sick Leave", "Parental Leave", "Unpaid Leave"
+  startDate  DateTime
+  endDate    DateTime
+  status     String   @default("PENDING") // "PENDING", "APPROVED", "REJECTED", "CANCELLED"
+  reason     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+}
+
+model IncidentRecord {
+  id           Int      @id @default(autoincrement())
+  employeeId   Int
+  incidentDate DateTime
+  severity     String   // "Low", "Medium", "High", "Critical"
+  description  String
+  status       String   @default("OPEN") // "OPEN", "INVESTIGATING", "RESOLVED", "CLOSED"
+  actionTaken  String?
+  reportedBy   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  employee     Employee @relation(fields: [employeeId], references: [id])
+}
+
 
 model SupervisorNote {
   id         Int      @id @default(autoincrement())

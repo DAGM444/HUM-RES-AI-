@@ -41,11 +41,11 @@ The **HUM-RES-AI** system is a full-stack Human Resource Management platform tha
 | **Database** | SQLite (`dev.db`) |
 | **API style** | REST (Express routes in `/server/src/index.ts`) |
 | **Containerization** | Docker + Docker Compose (frontend + backend services) |
-| **Auth** | ⚠️ **None implemented** — `User` model exists in schema but no auth endpoints exist |
-| **Email Service** | ⚠️ **None wired** — `handleSendEmail` in `EmailTemplates.tsx` only logs to console |
-| **AI Integration** | ⚠️ **Simulated only** — chatbot uses hardcoded keyword matching; AI recommendations are static mock data |
-| **State Management** | React `useState` / `useMemo` per component (no global store) |
-| **Routing** | Custom view-state switching in `DashboardLayout.tsx` (no React Router) |
+| **Auth** | ✅ JWT Bearer Auth with role protection (`/api/auth/login`, `/api/auth/me`) |
+| **Email Service** | ✅ Wired via Nodemailer backend dispatch (`/api/email/send`) |
+| **AI Integration** | ⚠️ Simulated keyword matching / fallback heuristics |
+| **State Management** | React `useState` / `useMemo` per component |
+| **Routing** | ✅ React Router v6 with deep-linking & protected routes |
 
 ---
 
@@ -152,15 +152,41 @@ The **HUM-RES-AI** system is a full-stack Human Resource Management platform tha
 ### ✅ Module: Performance Reports List (`PerformanceReportsList.tsx`)
 - **Status:** Present and renders (details not fully audited — assumed list/navigation wrapper)
 
+### ✅ Module: Time & Attendance (`TimeAttendance.tsx`) [Phase 3]
+- **Status:** Fully implemented and wired to live API
+- Backed by Prisma `LeaveRequest` model with REST endpoints (`/api/attendance`)
+- KPI summary cards (Total Requests, Pending, Approved, Rejected)
+- Tabs: Leave Requests Table & Active Daily Attendance Roster
+- Create Leave Request dialog modal (employee selector, type, dates, reason)
+- Direct inline Approve / Reject actions with live database persistence
+- Search, leave type filter, and status filter
+
+### ✅ Module: Workplace Incidents & Disciplinary (`Incidents.tsx`) [Phase 3]
+- **Status:** Fully implemented and wired to live API
+- Backed by Prisma `IncidentRecord` model with REST endpoints (`/api/incidents`)
+- KPI summary cards (Total Incidents, Critical & High, Active Investigations, Resolved)
+- Incident Records table with color-coded severity badges (Low, Medium, High, Critical)
+- Status lifecycle tracking (OPEN, INVESTIGATING, RESOLVED, CLOSED)
+- Log New Incident dialog modal (employee selector, severity, status, date, reporter, findings, action taken)
+- Inline Investigate & Resolve workflow actions
+
+### ✅ Module: React Router v6 Migration (`App.tsx`, `DashboardLayout.tsx`, `AppSidebar.tsx`) [Phase 3]
+- Migrated manual state-based view switching to declarative React Router v6 routing
+- Deep-linking supported for `/dashboard`, `/employees`, `/employees/:id`, `/attendance`, `/incidents`, `/pending-actions`, etc.
+- Dynamic breadcrumb generation and active route sidebar highlights
+- Authentication-guarded routing with redirect on unauthenticated access
+
 ### ✅ Backend API (`server/src/index.ts`)
-- 4 resource groups fully scaffolded:
-  - `GET /api/employees` — fetch all employees (with manager/subordinate relations)
-  - `POST /api/employees` — create employee (no input validation)
-  - `GET /api/tasks` — fetch all tasks
-  - `PATCH /api/tasks/:id` — update task (no validation)
-  - `GET /api/inbox` — fetch inbox messages (ordered by id desc)
-  - `PATCH /api/inbox/:id/read` — mark message as read
-  - `GET /api/events` — fetch calendar events
+- Resource groups fully scaffolded and protected:
+  - `POST /api/auth/login`, `GET /api/auth/me`
+  - `GET /api/employees`, `POST /api/employees`, `GET /api/employees/:id`, `PATCH /api/employees/:id/status`, `POST /api/employees/:id/notes`
+  - `GET /api/tasks`, `POST /api/tasks`, `PATCH /api/tasks/:id/approve`, `PATCH /api/tasks/:id/reject`, `PATCH /api/tasks/:id`
+  - `GET /api/inbox`, `PATCH /api/inbox/:id/read`
+  - `GET /api/events`
+  - `GET /api/settings`, `PUT /api/settings`
+  - `POST /api/email/send`
+  - `GET /api/attendance`, `POST /api/attendance`, `PATCH /api/attendance/:id` [Phase 3]
+  - `GET /api/incidents`, `POST /api/incidents`, `PATCH /api/incidents/:id` [Phase 3]
 - CORS configured; accepts Content-Type and Authorization headers
 - `dotenv/config` loaded; `PORT` and `FRONTEND_URL` from env
 
