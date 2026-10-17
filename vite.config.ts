@@ -15,5 +15,11 @@ export default defineConfig({
     watch: {
       usePolling: true, // Required for Docker + Windows
     },
+    proxy: {
+      '/api': {
+        target: process.env.BACKEND_URL || 'http://localhost:5000',
+        changeOrigin: true,
+      },
+    },
   },
 });

@@ -2,23 +2,27 @@ import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Avatar, AvatarFallback } from './ui/avatar';
 import { Input } from './ui/input';
 import { 
   MessageCircle, 
   Send, 
   Bot, 
   User, 
-  Clock, 
   HelpCircle,
   Lightbulb,
   FileText,
   DollarSign,
   Calendar,
   Shield,
-  Phone
+  Phone,
+  Loader2,
+  Sparkles
 } from 'lucide-react';
 import { Separator } from './ui/separator';
+import { getToken } from '../lib/auth';
+
+const API_BASE = import.meta.env.VITE_API_URL || '';
 
 interface ChatMessage {
   id: string;
@@ -86,29 +90,11 @@ const suggestedQuestions: SuggestedQuestion[] = [
   }
 ];
 
-const botResponses: Record<string, string> = {
-  paycheck: "Your final paycheck will be processed on your last day of employment and will include compensation through your final work day. You'll receive it via direct deposit within 1-2 business days, or by check if you don't have direct deposit set up. This will also include any accrued, unused vacation time as per company policy.",
-  
-  benefits: "Your health insurance benefits will continue through the end of the month in which your employment ends. You'll receive information about COBRA continuation coverage by mail within 14 days of your termination date. COBRA allows you to continue your current health coverage for up to 18 months.",
-  
-  pto: "Yes, you will be paid for any accrued, unused vacation time according to company policy. This will be included in your final paycheck. Please note that sick leave is not paid out upon termination as per our employee handbook.",
-  
-  equipment: "All company equipment must be returned by your last day of work. This includes your laptop, monitor, keyboard, mouse, phone, ID badge, access cards, and any other company property. HR will provide you with a checklist and coordinate the return process.",
-  
-  cobra: "You'll receive COBRA enrollment information by mail within 14 days of your termination. You'll have 60 days from the date coverage ends to elect COBRA coverage. Contact our benefits administrator at benefits@company.com or call (555) 123-4567 for assistance with enrollment.",
-  
-  reference: "Yes, you can request a reference letter from HR. We provide employment verification letters that include your job title, employment dates, and salary information. For more detailed references, you may also reach out to your direct supervisor. Contact HR at hr@company.com to request documentation.",
-  
-  contact: "For questions about your final pay and benefits, contact HR at hr@company.com or (555) 123-4567. For COBRA questions, contact our benefits team at benefits@company.com. For general employment verification, use hr@company.com. Our team is available Monday-Friday, 9 AM to 5 PM.",
-  
-  documents: "You'll receive several documents including: your final pay stub, COBRA enrollment information, unemployment benefits information, any applicable severance documentation, and a summary of your final benefits. Most documents will be mailed to your home address within 2 weeks of your last day."
-};
-
 export function EmployeeChatbot() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
-      id: '1',
-      content: "Hello! I'm here to help answer your questions about the exit process, benefits, and other HR-related topics. How can I assist you today?",
+      id: 'welcome-1',
+      content: "Hello! I am your AI HR Assistant powered by Gemini. I'm here to provide answers to your questions about exit procedures, final pay, benefits continuation, leave policies, and other HR topics. How can I help you today?",
       sender: 'bot',
       timestamp: new Date()
     }
@@ -124,69 +110,104 @@ export function EmployeeChatbot() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
-
-  const generateBotResponse = (userMessage: string): string => {
-    const lowerMessage = userMessage.toLowerCase();
-    
-    // Check for specific keywords and return appropriate responses
-    if (lowerMessage.includes('paycheck') || lowerMessage.includes('salary') || lowerMessage.includes('final pay')) {
-      return botResponses.paycheck;
-    } else if (lowerMessage.includes('health insurance') || lowerMessage.includes('medical') || lowerMessage.includes('insurance')) {
-      return botResponses.benefits;
-    } else if (lowerMessage.includes('vacation') || lowerMessage.includes('pto') || lowerMessage.includes('time off')) {
-      return botResponses.pto;
-    } else if (lowerMessage.includes('equipment') || lowerMessage.includes('laptop') || lowerMessage.includes('return')) {
-      return botResponses.equipment;
-    } else if (lowerMessage.includes('cobra')) {
-      return botResponses.cobra;
-    } else if (lowerMessage.includes('reference') || lowerMessage.includes('recommendation')) {
-      return botResponses.reference;
-    } else if (lowerMessage.includes('contact') || lowerMessage.includes('reach') || lowerMessage.includes('call')) {
-      return botResponses.contact;
-    } else if (lowerMessage.includes('documents') || lowerMessage.includes('paperwork')) {
-      return botResponses.documents;
-    } else if (lowerMessage.includes('benefits')) {
-      return "I can help you with various benefits questions. Are you asking about health insurance, retirement plans, COBRA coverage, or something else specific?";
-    } else if (lowerMessage.includes('exit') || lowerMessage.includes('termination') || lowerMessage.includes('leaving')) {
-      return "I can help guide you through the exit process. This typically includes returning company equipment, final paycheck processing, benefits transition, and documentation. What specific aspect would you like to know about?";
-    } else if (lowerMessage.includes('thank') || lowerMessage.includes('thanks')) {
-      return "You're welcome! I'm here to help make your transition as smooth as possible. Is there anything else you'd like to know?";
-    } else if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
-      return "Hello! I'm here to help with any questions about your exit process, benefits, or other HR matters. What would you like to know?";
-    } else {
-      return "I understand you're asking about something specific. While I can help with common exit process and benefits questions, for detailed or unique situations, I recommend contacting HR directly at hr@company.com or (555) 123-4567. They'll be able to provide personalized assistance for your situation.";
-    }
-  };
+  }, [messages, isTyping]);
 
   const handleSendMessage = async (messageContent?: string) => {
-    const content = messageContent || inputValue.trim();
-    if (!content) return;
+    const content = (messageContent || inputValue).trim();
+    if (!content || isTyping) return;
 
-    // Add user message
+    // Create and append user message
     const userMessage: ChatMessage = {
-      id: Date.now().toString(),
+      id: `user-${Date.now()}`,
       content,
       sender: 'user',
       timestamp: new Date()
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
     setInputValue('');
     setIsTyping(true);
 
-    // Simulate typing delay
-    setTimeout(() => {
-      const botResponse: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        content: generateBotResponse(content),
+    try {
+      // Build conversation history for the LLM
+      const history = nextMessages
+        .filter(m => m.id !== 'welcome-1')
+        .slice(-8)
+        .map(m => ({
+          role: m.sender === 'user' ? ('user' as const) : ('model' as const),
+          content: m.content
+        }));
+
+      const token = getToken();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const requestBody = JSON.stringify({
+        message: content,
+        history,
+      });
+
+      let res: Response;
+      const targetEndpoint = API_BASE ? `${API_BASE}/api/chat` : '/api/chat';
+
+      try {
+        res = await fetch('/api/chat', {
+          method: 'POST',
+          headers,
+          body: requestBody,
+        });
+      } catch (networkError) {
+        // Fall back to targetEndpoint or localhost:5000 if direct relative URL failed
+        res = await fetch(targetEndpoint !== '/api/chat' ? targetEndpoint : 'http://localhost:5000/api/chat', {
+          method: 'POST',
+          headers,
+          body: requestBody,
+        });
+      }
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        const errorMsg = errorData?.error || `Server responded with status ${res.status}`;
+        throw new Error(errorMsg);
+      }
+
+      const data = await res.json();
+      const botResponseText = data.reply || data.message || "I apologize, but I could not generate a response.";
+
+      const botMessage: ChatMessage = {
+        id: `bot-${Date.now()}`,
+        content: botResponseText,
         sender: 'bot',
         timestamp: new Date()
       };
 
-      setMessages(prev => [...prev, botResponse]);
+      setMessages(prev => [...prev, botMessage]);
+    } catch (error: any) {
+      console.error('Chat error:', error);
+      const isApiKeyError = error?.message?.includes('GEMINI_API_KEY');
+      const errorContent = isApiKeyError
+        ? "⚠️ The Gemini API key is not yet configured on the server. Please set GEMINI_API_KEY in server/.env to enable live AI responses."
+        : `⚠️ Sorry, I encountered an issue: ${error?.message || 'Unable to connect to the server'}. If the issue persists, please reach out to HR at hr@company.com or (555) 123-4567.`;
+
+      const botMessage: ChatMessage = {
+        id: `bot-${Date.now()}`,
+        content: errorContent,
+        sender: 'bot',
+        timestamp: new Date()
+      };
+
+      setMessages(prev => [...prev, botMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1000 + Math.random() * 1000); // Random delay between 1-2 seconds
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
+    }
   };
 
   const handleSuggestedQuestion = (question: SuggestedQuestion) => {
@@ -211,40 +232,48 @@ export function EmployeeChatbot() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl">HR Assistant</h1>
-        <p className="text-muted-foreground">
-          Get instant answers to your questions about the exit process, benefits, and more
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            HR Assistant
+            <Sparkles className="h-6 w-6 text-blue-500 inline-block" />
+          </h1>
+          <p className="text-muted-foreground">
+            Get instant, AI-powered answers to your questions about exit procedures, benefits, and HR policies
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-4">
         {/* Suggested Questions Sidebar */}
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Lightbulb className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Lightbulb className="h-5 w-5 text-amber-500" />
               Quick Questions
             </CardTitle>
             <CardDescription>
-              Click any question to get started
+              Click any question to ask the AI assistant
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {Object.entries(groupedSuggestions).map(([category, questions]) => (
               <div key={category}>
-                <h4 className="text-sm font-semibold mb-2 text-muted-foreground">{category}</h4>
+                <h4 className="text-xs font-semibold uppercase tracking-wider mb-2 text-muted-foreground">
+                  {category}
+                </h4>
                 <div className="space-y-2">
                   {questions.map((question) => (
                     <Button
                       key={question.id}
                       variant="outline"
                       size="sm"
-                      className="w-full justify-start text-left h-auto py-2 px-3"
+                      disabled={isTyping}
+                      className="w-full justify-start text-left h-auto py-2 px-3 hover:border-primary/50 transition-colors"
                       onClick={() => handleSuggestedQuestion(question)}
                     >
-                      <question.icon className="h-4 w-4 mr-2 flex-shrink-0" />
-                      <span className="text-xs">{question.text}</span>
+                      <question.icon className="h-4 w-4 mr-2 flex-shrink-0 text-muted-foreground" />
+                      <span className="text-xs leading-snug">{question.text}</span>
                     </Button>
                   ))}
                 </div>
@@ -254,35 +283,42 @@ export function EmployeeChatbot() {
         </Card>
 
         {/* Chat Interface */}
-        <Card className="lg:col-span-3">
-          <CardHeader>
+        <Card className="lg:col-span-3 flex flex-col">
+          <CardHeader className="border-b pb-4">
             <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10">
-                <AvatarFallback>
+              <Avatar className="h-10 w-10 border border-primary/20 bg-primary/10">
+                <AvatarFallback className="bg-primary/10 text-primary">
                   <Bot className="h-5 w-5" />
                 </AvatarFallback>
               </Avatar>
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageCircle className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <MessageCircle className="h-5 w-5 text-primary" />
                   HR Assistant Chat
                 </CardTitle>
                 <CardDescription>
-                  Ask questions about exit process, benefits, and more
+                  Powered by Gemini LLM • Safe, confidential HR guidance
                 </CardDescription>
               </div>
               <div className="ml-auto">
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  Online
-                </Badge>
+                {isTyping ? (
+                  <Badge variant="outline" className="flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-800 animate-pulse">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Generating...
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="flex items-center gap-1.5 text-xs">
+                    <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                    Gemini AI Active
+                  </Badge>
+                )}
               </div>
             </div>
           </CardHeader>
           
-          <CardContent className="p-0">
+          <CardContent className="p-0 flex-1 flex flex-col">
             {/* Messages Area */}
-            <div className="h-96 overflow-y-auto px-6 pb-4 space-y-4">
+            <div className="h-[420px] overflow-y-auto px-6 py-4 space-y-4">
               {messages.map((message) => (
                 <div
                   key={message.id}
@@ -293,8 +329,8 @@ export function EmployeeChatbot() {
                   <Avatar className="h-8 w-8 flex-shrink-0">
                     <AvatarFallback className={
                       message.sender === 'user' 
-                        ? 'bg-blue-500 text-white' 
-                        : 'bg-muted'
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-muted text-primary'
                     }>
                       {message.sender === 'user' ? (
                         <User className="h-4 w-4" />
@@ -307,14 +343,14 @@ export function EmployeeChatbot() {
                   <div className={`flex flex-col max-w-[80%] ${
                     message.sender === 'user' ? 'items-end' : 'items-start'
                   }`}>
-                    <div className={`rounded-lg px-4 py-2 ${
+                    <div className={`rounded-xl px-4 py-2.5 text-sm shadow-sm ${
                       message.sender === 'user'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-muted'
+                        ? 'bg-blue-600 text-white rounded-tr-none'
+                        : 'bg-muted/80 text-foreground border border-border/50 rounded-tl-none'
                     }`}>
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
                     </div>
-                    <span className="text-xs text-muted-foreground mt-1">
+                    <span className="text-[11px] text-muted-foreground mt-1 px-1">
                       {message.timestamp.toLocaleTimeString([], { 
                         hour: '2-digit', 
                         minute: '2-digit' 
@@ -324,20 +360,21 @@ export function EmployeeChatbot() {
                 </div>
               ))}
               
-              {/* Typing Indicator */}
+              {/* Dynamic Typing / Thinking Indicator */}
               {isTyping && (
                 <div className="flex items-start gap-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-muted">
+                  <Avatar className="h-8 w-8 flex-shrink-0">
+                    <AvatarFallback className="bg-muted text-primary">
                       <Bot className="h-4 w-4" />
                     </AvatarFallback>
                   </Avatar>
-                  <div className="bg-muted rounded-lg px-4 py-2">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="bg-muted/80 border border-border/50 rounded-xl rounded-tl-none px-4 py-3 flex items-center gap-2.5 shadow-sm">
+                    <div className="flex space-x-1 items-center">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></div>
+                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></div>
                     </div>
+                    <span className="text-xs text-muted-foreground font-medium">AI Assistant is thinking...</span>
                   </div>
                 </div>
               )}
@@ -348,30 +385,39 @@ export function EmployeeChatbot() {
             <Separator />
 
             {/* Input Area */}
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <div className="flex items-center gap-2">
                 <div className="flex-1 relative">
                   <Input
                     ref={inputRef}
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Type your question here..."
-                    className="pr-12"
+                    onKeyDown={handleKeyPress}
+                    placeholder={isTyping ? "AI is generating a response..." : "Ask anything about exit processes, benefits, PTO, or company policy..."}
+                    className="pr-4"
                     disabled={isTyping}
                   />
                 </div>
                 <Button 
                   onClick={() => handleSendMessage()}
                   disabled={!inputValue.trim() || isTyping}
-                  size="sm"
+                  size="default"
+                  className="px-4"
                 >
-                  <Send className="h-4 w-4" />
+                  {isTyping ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4 mr-1 sm:inline hidden" />
+                      <span>Send</span>
+                    </>
+                  )}
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                For complex questions or immediate assistance, contact HR at hr@company.com or (555) 123-4567
-              </p>
+              <div className="flex items-center justify-between text-xs text-muted-foreground mt-2 px-1">
+                <span>Direct HR contact: <a href="mailto:hr@company.com" className="underline hover:text-foreground">hr@company.com</a> or (555) 123-4567</span>
+                <span className="hidden sm:inline">Press Enter to send</span>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -380,31 +426,31 @@ export function EmployeeChatbot() {
       {/* Help Info */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <HelpCircle className="h-5 w-5" />
-            How to Use the HR Assistant
+          <CardTitle className="flex items-center gap-2 text-base">
+            <HelpCircle className="h-5 w-5 text-primary" />
+            About the AI HR Assistant
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 text-sm">
+          <div className="grid gap-4 md:grid-cols-3 text-sm">
             <div>
-              <h4 className="font-semibold mb-2">Quick Questions</h4>
-              <p className="text-muted-foreground">
-                Click on any suggested question in the sidebar to get instant answers to common HR topics.
+              <h4 className="font-semibold mb-1 text-foreground">Live LLM Powered</h4>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                Integrated with Google Gemini to understand complex inquiries and provide tailored guidance in real time.
               </p>
             </div>
             
             <div>
-              <h4 className="font-semibold mb-2">Ask Anything</h4>
-              <p className="text-muted-foreground">
-                Type your own questions about exit process, benefits, payroll, or other HR matters in the chat.
+              <h4 className="font-semibold mb-1 text-foreground">HR Guidelines Aligned</h4>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                Trained on company offboarding procedures, COBRA timelines, equipment checklists, and leave policies.
               </p>
             </div>
             
             <div>
-              <h4 className="font-semibold mb-2">Need More Help?</h4>
-              <p className="text-muted-foreground">
-                For complex situations or immediate assistance, contact our HR team directly for personalized support.
+              <h4 className="font-semibold mb-1 text-foreground">Human Support Escalation</h4>
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                For confidential inquiries, formal grievances, or personal exceptions, the bot guides you directly to your HR representative.
               </p>
             </div>
           </div>

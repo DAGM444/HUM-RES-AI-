@@ -12,6 +12,7 @@
     "prisma:seed": "prisma db seed"
   },
   "dependencies": {
+    "@google/genai": "^2.30.0",
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
@@ -30,5 +31,8 @@
     "prisma": "^6.19.3",
     "tsx": "^4.7.1",
     "typescript": "^5.3.3"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }
