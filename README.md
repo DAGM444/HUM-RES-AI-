@@ -28,13 +28,13 @@ A modern, production-ready, containerized Human Resource Management platform bui
 
 ##  Key Features
 
-*  Secure Authentication & RBAC:** JWT-protected routes and role-based access for administrators and employees.
-*  Dynamic Employee Management:** Real-time directory, employee profiles, and supervisor notes.
-*  Task & Approval Workflows:** Interactive action queues for reviewing and processing requests.
-*  Time & Attendance:** Comprehensive tracking for employee work hours and attendance logs.
-*  Incident Management:** Record, log, and resolve workplace incidents seamlessly.
-*  AI-Powered HR Assistant:** Integrated Gemini API chatbot to answer employee policy and benefit queries dynamically.
-*  Automated Notifications:** Backend email dispatch via Nodemailer for system updates and approvals.
+*  Secure Authentication & RBAC: JWT-protected routes and role-based access for administrators and employees.
+*  Dynamic Employee Management: Real-time directory, employee profiles, and supervisor notes.
+*  Task & Approval Workflows: Interactive action queues for reviewing and processing requests.
+*  Time & Attendance: Comprehensive tracking for employee work hours and attendance logs.
+*  Incident Management: Record, log, and resolve workplace incidents seamlessly.
+*  AI-Powered HR Assistant: Integrated Gemini API chatbot to answer employee policy and benefit queries dynamically.
+*  Automated Notifications: Backend email dispatch via Nodemailer for system updates and approvals.
 
 ---
 
