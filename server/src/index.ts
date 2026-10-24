@@ -397,6 +397,182 @@ app.patch('/api/employees/:id/status', requireAuth, async (req: Request, res: Re
   }
 });
 
+/**
+ * PUT /api/employees/:id
+ * Body: { name, email, role, department, performanceScore, status, location, avatar, managerId }
+ * Protected with requireAuth.
+ */
+app.put('/api/employees/:id', requireAuth, async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) {
+    res.status(400).json({ error: 'Invalid employee ID' });
+    return;
+  }
+
+  try {
+    const existing = await prisma.employee.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ error: 'Employee not found' });
+      return;
+    }
+
+    const {
+      name,
+      email,
+      role,
+      department,
+      performanceScore,
+      status,
+      location,
+      avatar,
+      managerId,
+    } = req.body;
+
+    const dataToUpdate: any = {};
+
+    if (name !== undefined) {
+      if (!name || typeof name !== 'string' || !name.trim()) {
+        res.status(400).json({ error: 'Name cannot be empty' });
+        return;
+      }
+      dataToUpdate.name = name.trim();
+    }
+
+    if (email !== undefined) {
+      if (!email || typeof email !== 'string' || !email.trim()) {
+        res.status(400).json({ error: 'Email cannot be empty' });
+        return;
+      }
+      const trimmedEmail = email.trim().toLowerCase();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(trimmedEmail)) {
+        res.status(400).json({ error: 'A valid email address is required' });
+        return;
+      }
+      if (trimmedEmail !== existing.email) {
+        const conflict = await prisma.employee.findUnique({ where: { email: trimmedEmail } });
+        if (conflict) {
+          res.status(409).json({ error: 'An employee with this email already exists' });
+          return;
+        }
+      }
+      dataToUpdate.email = trimmedEmail;
+    }
+
+    if (role !== undefined) {
+      const upperRole = String(role).trim().toUpperCase();
+      if (!Object.values(Role).includes(upperRole as Role)) {
+        res.status(400).json({ error: `Invalid role. Allowed values: ${Object.values(Role).join(', ')}` });
+        return;
+      }
+      dataToUpdate.role = upperRole as Role;
+    }
+
+    if (department !== undefined) {
+      if (!department || typeof department !== 'string' || !department.trim()) {
+        res.status(400).json({ error: 'Department cannot be empty' });
+        return;
+      }
+      dataToUpdate.department = department.trim();
+    }
+
+    if (status !== undefined) {
+      const upperStatus = String(status).trim().toUpperCase();
+      if (!Object.values(Status).includes(upperStatus as Status)) {
+        res.status(400).json({ error: `Invalid status. Allowed values: ${Object.values(Status).join(', ')}` });
+        return;
+      }
+      dataToUpdate.status = upperStatus as Status;
+    }
+
+    if (performanceScore !== undefined && performanceScore !== null && performanceScore !== '') {
+      const score = Number(performanceScore);
+      if (isNaN(score) || score < 0 || score > 5) {
+        res.status(400).json({ error: 'Performance score must be a number between 0 and 5' });
+        return;
+      }
+      dataToUpdate.performanceScore = score;
+    }
+
+    if (location !== undefined) {
+      dataToUpdate.location = String(location).trim() || 'Remote';
+    }
+
+    if (avatar !== undefined) {
+      dataToUpdate.avatar = String(avatar).trim() || existing.avatar;
+    }
+
+    if (managerId !== undefined) {
+      if (managerId === null || managerId === '' || managerId === 'none') {
+        dataToUpdate.managerId = null;
+      } else {
+        const parsedMgr = Number(managerId);
+        if (isNaN(parsedMgr)) {
+          res.status(400).json({ error: 'Invalid manager ID' });
+          return;
+        }
+        if (parsedMgr === id) {
+          res.status(400).json({ error: 'Employee cannot be their own manager' });
+          return;
+        }
+        const mgrExists = await prisma.employee.findUnique({ where: { id: parsedMgr } });
+        if (!mgrExists) {
+          res.status(400).json({ error: 'Specified manager does not exist' });
+          return;
+        }
+        dataToUpdate.managerId = parsedMgr;
+      }
+    }
+
+    const updated = await prisma.employee.update({
+      where: { id },
+      data: dataToUpdate,
+      include: { manager: true, subordinates: true },
+    });
+
+    res.json(updated);
+  } catch (error: any) {
+    console.error('Update employee error:', error);
+    res.status(500).json({ error: 'Failed to update employee' });
+  }
+});
+
+/**
+ * DELETE /api/employees/:id
+ * Deletes an employee and cleans up dependent records.
+ * Protected with requireAuth.
+ */
+app.delete('/api/employees/:id', requireAuth, async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) {
+    res.status(400).json({ error: 'Invalid employee ID' });
+    return;
+  }
+
+  try {
+    const existing = await prisma.employee.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ error: 'Employee not found' });
+      return;
+    }
+
+    await prisma.$transaction([
+      prisma.user.deleteMany({ where: { employeeId: id } }),
+      prisma.supervisorNote.deleteMany({ where: { employeeId: id } }),
+      prisma.task.deleteMany({ where: { employeeId: id } }),
+      prisma.leaveRequest.deleteMany({ where: { employeeId: id } }),
+      prisma.incidentRecord.deleteMany({ where: { employeeId: id } }),
+      prisma.employee.updateMany({ where: { managerId: id }, data: { managerId: null } }),
+      prisma.employee.delete({ where: { id } }),
+    ]);
+
+    res.json({ message: 'Employee deleted successfully', id });
+  } catch (error) {
+    console.error('Delete employee error:', error);
+    res.status(500).json({ error: 'Failed to delete employee' });
+  }
+});
+
 // ==========================================
 // 2. TASK / PENDING ACTION ENDPOINTS
 // ==========================================

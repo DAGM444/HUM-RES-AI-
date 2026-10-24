@@ -30,7 +30,12 @@ import {
   AlertCircle,
   Loader2,
   RefreshCw,
+  Edit3,
+  Trash2,
+  UserX,
 } from 'lucide-react';
+import { EditEmployeeModal } from './EditEmployeeModal';
+import { DeleteEmployeeDialog } from './DeleteEmployeeDialog';
 import { getToken } from '../lib/auth';
 import { AddEmployeeModal } from './AddEmployeeModal';
 
@@ -80,12 +85,103 @@ export function EmployeeDirectory({ onNavigateToProfile, onNavigateToReport }: E
   const [isAddModalOpen, setIsAddModalOpen]     = useState(false);
   const [successNotification, setSuccessNotification] = useState<string | null>(null);
 
+  const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
+  const [editingEmployee, setEditingEmployee]   = useState<LiveEmployee | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen]   = useState(false);
+  const [deletingEmployee, setDeletingEmployee] = useState<LiveEmployee | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.employee-actions-menu')) {
+        setActiveDropdownId(null);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setActiveDropdownId(null);
+    };
+
+    if (activeDropdownId !== null) {
+      document.addEventListener('mousedown', handleClickOutside);
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeDropdownId]);
+
   const handleEmployeeAdded = (newEmployee: LiveEmployee) => {
     fetchEmployees();
     setSuccessNotification(`Employee "${newEmployee.name}" was added successfully!`);
     setTimeout(() => {
       setSuccessNotification(null);
     }, 4000);
+  };
+
+  const handleEmployeeUpdated = (updated: any) => {
+    fetchEmployees();
+    setSuccessNotification(`Employee "${updated.name}" was updated successfully!`);
+    setTimeout(() => {
+      setSuccessNotification(null);
+    }, 4000);
+  };
+
+  const handleEmployeeDeletedOrDeactivated = (action: 'deactivated' | 'deleted', emp: any) => {
+    fetchEmployees();
+    setSuccessNotification(
+      action === 'deactivated'
+        ? `Employee "${emp.name}" was deactivated.`
+        : `Employee "${emp.name}" was permanently deleted.`
+    );
+    setTimeout(() => {
+      setSuccessNotification(null);
+    }, 4000);
+  };
+
+  const handleExportCSV = () => {
+    if (filteredEmployees.length === 0) {
+      setSuccessNotification('No employees available to export.');
+      setTimeout(() => setSuccessNotification(null), 4000);
+      return;
+    }
+
+    const headers = ['Name', 'Email', 'Role', 'Department', 'Status', 'Performance Score', 'Join Date'];
+
+    const escapeCSV = (value: unknown): string => {
+      if (value === null || value === undefined) return '""';
+      const str = String(value);
+      if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return `"${str}"`;
+    };
+
+    const rows = filteredEmployees.map((emp) => [
+      escapeCSV(emp.name),
+      escapeCSV(emp.email),
+      escapeCSV(emp.role),
+      escapeCSV(emp.department),
+      escapeCSV(STATUS_LABEL[emp.status] ?? emp.status),
+      escapeCSV(emp.performanceScore),
+      escapeCSV(emp.joinDate ? new Date(emp.joinDate).toISOString().split('T')[0] : ''),
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\r\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'employee-directory-report.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    setSuccessNotification(`Exported ${filteredEmployees.length} employee${filteredEmployees.length === 1 ? '' : 's'} to CSV!`);
+    setTimeout(() => setSuccessNotification(null), 4000);
   };
 
   // ---- Fetch live data ----
@@ -227,7 +323,7 @@ export function EmployeeDirectory({ onNavigateToProfile, onNavigateToReport }: E
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" className="h-9">
+          <Button variant="outline" size="sm" className="h-9" onClick={handleExportCSV}>
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
@@ -420,9 +516,70 @@ export function EmployeeDirectory({ onNavigateToProfile, onNavigateToReport }: E
                             <FileText className="h-3.5 w-3.5 mr-1" />
                             Report
                           </Button>
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
+                          <div className="relative employee-actions-menu">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                              aria-label={`Actions for ${employee.name}`}
+                              onClick={() =>
+                                setActiveDropdownId(prev => (prev === employee.id ? null : employee.id))
+                              }
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+
+                            {activeDropdownId === employee.id && (
+                              <div
+                                role="menu"
+                                aria-label="Employee Actions"
+                                className="absolute right-0 top-full mt-1 w-44 rounded-md border bg-popover p-1 text-popover-foreground shadow-lg z-50 animate-in fade-in-0 zoom-in-95"
+                              >
+                                <button
+                                  role="menuitem"
+                                  type="button"
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-xs rounded-sm hover:bg-accent hover:text-accent-foreground text-left cursor-pointer transition-colors"
+                                  onClick={() => {
+                                    setActiveDropdownId(null);
+                                    onNavigateToProfile?.(employee.id);
+                                  }}
+                                >
+                                  <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                                  <span>View Profile</span>
+                                </button>
+
+                                <button
+                                  role="menuitem"
+                                  type="button"
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-xs rounded-sm hover:bg-accent hover:text-accent-foreground text-left cursor-pointer transition-colors"
+                                  onClick={() => {
+                                    setActiveDropdownId(null);
+                                    setEditingEmployee(employee);
+                                    setIsEditModalOpen(true);
+                                  }}
+                                >
+                                  <Edit3 className="h-3.5 w-3.5 text-muted-foreground" />
+                                  <span>Edit Employee</span>
+                                </button>
+
+                                <div className="h-px bg-muted my-1" />
+
+                                <button
+                                  role="menuitem"
+                                  type="button"
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-xs rounded-sm text-destructive hover:bg-destructive/10 text-left cursor-pointer transition-colors"
+                                  onClick={() => {
+                                    setActiveDropdownId(null);
+                                    setDeletingEmployee(employee);
+                                    setIsDeleteModalOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                  <span>Delete / Deactivate</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -543,6 +700,27 @@ export function EmployeeDirectory({ onNavigateToProfile, onNavigateToReport }: E
         onClose={() => setIsAddModalOpen(false)}
         onEmployeeAdded={handleEmployeeAdded}
         managers={employees}
+      />
+
+      <EditEmployeeModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingEmployee(null);
+        }}
+        onEmployeeUpdated={handleEmployeeUpdated}
+        employee={editingEmployee}
+        managers={employees}
+      />
+
+      <DeleteEmployeeDialog
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setDeletingEmployee(null);
+        }}
+        employee={deletingEmployee}
+        onEmployeeDeletedOrDeactivated={handleEmployeeDeletedOrDeactivated}
       />
     </div>
   );
