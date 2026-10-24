@@ -22,6 +22,7 @@ import {
   FileText,
   Download,
   UserPlus,
+  CheckCircle2,
   MoreHorizontal,
   ChevronLeft,
   ChevronRight,
@@ -31,6 +32,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { getToken } from '../lib/auth';
+import { AddEmployeeModal } from './AddEmployeeModal';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:5000';
 
@@ -75,6 +77,16 @@ export function EmployeeDirectory({ onNavigateToProfile, onNavigateToReport }: E
   const [sortDirection, setSortDirection]       = useState<SortDirection>(null);
   const [currentPage, setCurrentPage]           = useState(1);
   const [itemsPerPage, setItemsPerPage]         = useState(10);
+  const [isAddModalOpen, setIsAddModalOpen]     = useState(false);
+  const [successNotification, setSuccessNotification] = useState<string | null>(null);
+
+  const handleEmployeeAdded = (newEmployee: LiveEmployee) => {
+    fetchEmployees();
+    setSuccessNotification(`Employee "${newEmployee.name}" was added successfully!`);
+    setTimeout(() => {
+      setSuccessNotification(null);
+    }, 4000);
+  };
 
   // ---- Fetch live data ----
   const fetchEmployees = async () => {
@@ -219,12 +231,19 @@ export function EmployeeDirectory({ onNavigateToProfile, onNavigateToReport }: E
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Button size="sm" className="h-9">
+          <Button size="sm" className="h-9" onClick={() => setIsAddModalOpen(true)}>
             <UserPlus className="h-4 w-4 mr-2" />
             Add Employee
           </Button>
         </div>
       </div>
+
+      {successNotification && (
+        <div className="p-3 text-sm rounded-md bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          <span>{successNotification}</span>
+        </div>
+      )}
 
       {/* Filters */}
       <Card className="shadow-sm">
@@ -518,6 +537,13 @@ export function EmployeeDirectory({ onNavigateToProfile, onNavigateToReport }: E
           </CardContent>
         </Card>
       </div>
+
+      <AddEmployeeModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onEmployeeAdded={handleEmployeeAdded}
+        managers={employees}
+      />
     </div>
   );
 }

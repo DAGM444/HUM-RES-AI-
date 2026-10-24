@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { prisma } from './lib/prisma.js';
 import { requireAuth } from './middleware/auth.js';
-import { Status } from '@prisma/client';
+import { Role, Status } from '@prisma/client';
 import { sendEmail } from './lib/email.js';
 import { generateAIChatResponse, buildHRSystemPrompt } from './lib/gemini.js';
 import { GoogleGenAI } from '@google/genai';
@@ -126,13 +126,164 @@ app.get('/api/employees', async (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/employees', async (req: Request, res: Response) => {
+/**
+ * POST /api/employees
+ * Body: { name, email, role, department, performanceScore, status, joinDate, avatar, location, managerId }
+ * Protected with requireAuth.
+ */
+app.post('/api/employees', requireAuth, async (req: Request, res: Response) => {
   try {
-    const newEmployee = await prisma.employee.create({ data: req.body });
+    const {
+      name,
+      email,
+      role,
+      department,
+      performanceScore,
+      status,
+      joinDate,
+      avatar,
+      location,
+      managerId,
+    } = req.body;
+
+    // 1. Validate name
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      res.status(400).json({ error: 'Name is required' });
+      return;
+    }
+
+    // 2. Validate email
+    if (!email || typeof email !== 'string' || !email.trim()) {
+      res.status(400).json({ error: 'Email is required' });
+      return;
+    }
+    const trimmedEmail = email.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      res.status(400).json({ error: 'A valid email address is required' });
+      return;
+    }
+
+    // Check unique email
+    const existingEmployee = await prisma.employee.findUnique({
+      where: { email: trimmedEmail },
+    });
+    if (existingEmployee) {
+      res.status(409).json({ error: 'An employee with this email already exists' });
+      return;
+    }
+
+    // 3. Validate role
+    if (!role || typeof role !== 'string') {
+      res.status(400).json({ error: 'Role is required' });
+      return;
+    }
+    const upperRole = role.trim().toUpperCase();
+    if (!Object.values(Role).includes(upperRole as Role)) {
+      res.status(400).json({
+        error: `Invalid role. Allowed values: ${Object.values(Role).join(', ')}`,
+      });
+      return;
+    }
+
+    // 4. Validate department
+    if (!department || typeof department !== 'string' || !department.trim()) {
+      res.status(400).json({ error: 'Department is required' });
+      return;
+    }
+
+    // 5. Validate status (optional, default: ACTIVE)
+    let finalStatus: Status = Status.ACTIVE;
+    if (status !== undefined && status !== null && status !== '') {
+      if (typeof status !== 'string') {
+        res.status(400).json({ error: 'Status must be a string' });
+        return;
+      }
+      const upperStatus = status.trim().toUpperCase();
+      if (!Object.values(Status).includes(upperStatus as Status)) {
+        res.status(400).json({
+          error: `Invalid status. Allowed values: ${Object.values(Status).join(', ')}`,
+        });
+        return;
+      }
+      finalStatus = upperStatus as Status;
+    }
+
+    // 6. Validate performanceScore (optional, default: 5.0)
+    let finalScore = 5.0;
+    if (performanceScore !== undefined && performanceScore !== null && performanceScore !== '') {
+      const numScore = Number(performanceScore);
+      if (isNaN(numScore) || numScore < 0 || numScore > 5) {
+        res.status(400).json({ error: 'Performance score must be a number between 0 and 5' });
+        return;
+      }
+      finalScore = numScore;
+    }
+
+    // 7. Validate joinDate (optional, default: now)
+    let finalJoinDate = new Date();
+    if (joinDate !== undefined && joinDate !== null && joinDate !== '') {
+      const parsedDate = new Date(joinDate);
+      if (isNaN(parsedDate.getTime())) {
+        res.status(400).json({ error: 'Invalid joinDate format' });
+        return;
+      }
+      finalJoinDate = parsedDate;
+    }
+
+    // 8. Location (optional, default: 'Remote')
+    const finalLocation = (typeof location === 'string' && location.trim()) ? location.trim() : 'Remote';
+
+    // 9. Avatar (optional, default to generated UI avatar or placeholder)
+    const finalAvatar = (typeof avatar === 'string' && avatar.trim())
+      ? avatar.trim()
+      : `https://ui-avatars.com/api/?name=${encodeURIComponent(name.trim())}&background=random`;
+
+    // 10. Validate managerId (optional)
+    let finalManagerId: number | null = null;
+    if (managerId !== undefined && managerId !== null && managerId !== '' && managerId !== 'none') {
+      const parsedManagerId = Number(managerId);
+      if (isNaN(parsedManagerId)) {
+        res.status(400).json({ error: 'Manager ID must be a valid number' });
+        return;
+      }
+      const managerExists = await prisma.employee.findUnique({
+        where: { id: parsedManagerId },
+      });
+      if (!managerExists) {
+        res.status(400).json({ error: 'Specified manager does not exist' });
+        return;
+      }
+      finalManagerId = parsedManagerId;
+    }
+
+    const newEmployee = await prisma.employee.create({
+      data: {
+        name: name.trim(),
+        email: trimmedEmail,
+        role: upperRole as Role,
+        department: department.trim(),
+        status: finalStatus,
+        performanceScore: finalScore,
+        joinDate: finalJoinDate,
+        location: finalLocation,
+        avatar: finalAvatar,
+        managerId: finalManagerId,
+      },
+      include: {
+        manager: true,
+        subordinates: true,
+      },
+    });
+
     res.status(201).json(newEmployee);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Create employee error:', error);
-    res.status(400).json({ error: 'Invalid data provided' });
+    if (error?.code === 'P2002') {
+      res.status(409).json({ error: 'An employee with this email already exists' });
+      return;
+    }
+    res.status(500).json({ error: 'Failed to create employee' });
   }
 });
 
