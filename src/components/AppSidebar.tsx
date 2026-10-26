@@ -13,6 +13,8 @@ import {
   Building2,
   Mail,
   MessageCircle,
+  ChevronLeft,
+  PanelLeft,
 } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -27,9 +29,11 @@ import {
   SidebarMenuItem,
   SidebarHeader,
   SidebarFooter,
+  useSidebar,
 } from './ui/sidebar';
+import { Button } from './ui/button';
 
-// Primary application navigation items
+// Primary application navigation items (Employee Directory removed from Application to avoid duplication)
 const items = [
   {
     title: 'Home',
@@ -52,11 +56,6 @@ const items = [
     path: '/inbox',
   },
   {
-    title: 'Employee Directory',
-    icon: Users,
-    path: '/employees',
-  },
-  {
     title: 'Calendar',
     icon: Calendar,
     path: '/calendar',
@@ -68,7 +67,7 @@ const items = [
   },
 ];
 
-// HR function-specific navigation items
+// HR function-specific navigation items (Employee Directory kept under HR Functions)
 const hrItems = [
   {
     title: 'Employee Directory',
@@ -107,13 +106,15 @@ const hrItems = [
   },
 ];
 
-interface AppSidebarProps {
+export interface AppSidebarProps {
   onNavigate?: (path: string) => void;
 }
 
 export function AppSidebar({ onNavigate }: AppSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { state, toggleSidebar } = useSidebar();
+  const isCollapsed = state === 'collapsed';
 
   const handleItemClick = (path: string) => {
     navigate(path);
@@ -130,20 +131,54 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
   };
 
   return (
-    <Sidebar>
-      <SidebarHeader>
-        <div
-          className="flex items-center gap-2 px-4 py-2 cursor-pointer hover:opacity-80 transition-opacity"
-          onClick={() => handleItemClick('/dashboard')}
-        >
-          <Building2 className="h-6 w-6 text-primary" />
-          <span className="font-semibold tracking-tight">HR Management</span>
-        </div>
+    <Sidebar collapsible="icon">
+      <SidebarHeader className="border-b border-sidebar-border">
+        {isCollapsed ? (
+          <div className="flex items-center justify-center py-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleSidebar}
+              className="h-8 w-8 text-primary hover:bg-sidebar-accent cursor-pointer rounded-lg"
+              title="Expand sidebar"
+              aria-label="Expand sidebar"
+            >
+              <PanelLeft className="h-5 w-5" />
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between px-2 py-1 w-full">
+            <div
+              className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity min-w-0"
+              onClick={() => handleItemClick('/dashboard')}
+              title="HR Management"
+            >
+              <Building2 className="h-6 w-6 text-primary shrink-0" />
+              <span className="font-semibold tracking-tight text-sidebar-foreground truncate">
+                HR Management
+              </span>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleSidebar}
+              className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent cursor-pointer rounded-lg"
+              title="Collapse sidebar"
+              aria-label="Collapse sidebar"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </SidebarHeader>
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Application</SidebarGroupLabel>
+          {!isCollapsed ? (
+            <SidebarGroupLabel>Application</SidebarGroupLabel>
+          ) : (
+            <div className="my-1 border-t border-sidebar-border" />
+          )}
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item, index) => {
@@ -152,12 +187,13 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
                   <SidebarMenuItem key={`app-${item.title}-${index}`}>
                     <SidebarMenuButton
                       onClick={() => handleItemClick(item.path)}
+                      title={item.title}
                       className={`cursor-pointer transition-colors ${
                         active ? 'bg-accent text-accent-foreground font-semibold' : ''
-                      }`}
+                      } ${isCollapsed ? 'justify-center px-0' : ''}`}
                     >
-                      <item.icon className={active ? 'text-primary' : undefined} />
-                      <span>{item.title}</span>
+                      <item.icon className={`shrink-0 ${active ? 'text-primary' : ''}`} />
+                      {!isCollapsed && <span className="truncate">{item.title}</span>}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -167,7 +203,11 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>HR Functions</SidebarGroupLabel>
+          {!isCollapsed ? (
+            <SidebarGroupLabel>HR Functions</SidebarGroupLabel>
+          ) : (
+            <div className="my-1 border-t border-sidebar-border" />
+          )}
           <SidebarGroupContent>
             <SidebarMenu>
               {hrItems.map((item, index) => {
@@ -176,12 +216,13 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
                   <SidebarMenuItem key={`hr-${item.title}-${index}`}>
                     <SidebarMenuButton
                       onClick={() => handleItemClick(item.path)}
+                      title={item.title}
                       className={`cursor-pointer transition-colors ${
                         active ? 'bg-accent text-accent-foreground font-semibold' : ''
-                      }`}
+                      } ${isCollapsed ? 'justify-center px-0' : ''}`}
                     >
-                      <item.icon className={active ? 'text-primary' : undefined} />
-                      <span>{item.title}</span>
+                      <item.icon className={`shrink-0 ${active ? 'text-primary' : ''}`} />
+                      {!isCollapsed && <span className="truncate">{item.title}</span>}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 );
@@ -191,11 +232,19 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
-        <div className="px-4 py-2 text-xs text-muted-foreground">
-          HR Management v1.3 (Phase 3)
-        </div>
+      <SidebarFooter className="border-t border-sidebar-border">
+        {!isCollapsed ? (
+          <div className="px-3 py-2 text-xs text-muted-foreground truncate">
+            HR Management v1.3 (Phase 3)
+          </div>
+        ) : (
+          <div className="py-2 text-center text-[10px] text-muted-foreground font-mono" title="HR Management v1.3">
+            v1.3
+          </div>
+        )}
       </SidebarFooter>
     </Sidebar>
   );
 }
+
+export default AppSidebar;

@@ -8,7 +8,7 @@ const SIDEBAR_COOKIE_NAME = "sidebar:state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
-const SIDEBAR_WIDTH_ICON = "3rem"
+const SIDEBAR_WIDTH_ICON = "4rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
 type SidebarContext = {
@@ -133,7 +133,7 @@ const Sidebar = React.forwardRef<
     {
       side = "left",
       variant = "sidebar",
-      collapsible = "offcanvas",
+      collapsible = "icon",
       className,
       children,
       ...props
@@ -146,7 +146,7 @@ const Sidebar = React.forwardRef<
       return (
         <div
           className={cn(
-            "flex h-full w-[--sidebar-width] flex-col bg-sidebar text-sidebar-foreground",
+            "flex h-full w-[--sidebar-width] flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border",
             className
           )}
           ref={ref}
@@ -168,8 +168,9 @@ const Sidebar = React.forwardRef<
           )}
           <div
             ref={ref}
+            data-state={openMobile ? "expanded" : "collapsed"}
             className={cn(
-              "fixed inset-y-0 z-50 h-full w-[--sidebar-width] bg-sidebar text-sidebar-foreground shadow-lg transition-transform duration-200 ease-in-out",
+              "fixed inset-y-0 z-50 h-full w-[--sidebar-width] bg-sidebar text-sidebar-foreground shadow-lg transition-transform duration-200 ease-in-out flex flex-col border-r border-sidebar-border",
               side === "left" ? "left-0" : "right-0",
               openMobile ? "translate-x-0" : side === "left" ? "-translate-x-full" : "translate-x-full",
               className
@@ -185,9 +186,11 @@ const Sidebar = React.forwardRef<
     return (
       <div
         ref={ref}
+        data-state={state}
+        data-collapsible={state === "collapsed" ? collapsible : ""}
         className={cn(
-          "relative h-screen w-[--sidebar-width] bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-linear",
-          state === "collapsed" && collapsible === "icon" && "w-[--sidebar-width-icon]",
+          "group relative h-screen bg-sidebar text-sidebar-foreground transition-all duration-300 ease-in-out flex flex-col shrink-0 border-r border-sidebar-border select-none",
+          state === "collapsed" ? "w-16" : "w-64",
           className
         )}
         {...props}
@@ -233,7 +236,7 @@ const SidebarInset = React.forwardRef<
     <main
       ref={ref}
       className={cn(
-        "relative flex min-h-screen flex-1 flex-col bg-background",
+        "relative flex min-h-screen flex-1 flex-col bg-background min-w-0 transition-all duration-300 ease-in-out",
         "peer-data-[variant=inset]:min-h-[calc(100vh-1rem)] md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
         className
       )}
@@ -266,7 +269,7 @@ const SidebarFooter = React.forwardRef<
     <div
       ref={ref}
       data-sidebar="footer"
-      className={cn("flex flex-col gap-2 p-2", className)}
+      className={cn("flex flex-col gap-2 p-2 mt-auto", className)}
       {...props}
     />
   )
@@ -282,7 +285,7 @@ const SidebarContent = React.forwardRef<
       ref={ref}
       data-sidebar="content"
       className={cn(
-        "flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
+        "flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overflow-x-hidden group-data-[collapsible=icon]:overflow-hidden",
         className
       )}
       {...props}
@@ -317,7 +320,7 @@ const SidebarGroupLabel = React.forwardRef<
       ref={ref}
       data-sidebar="group-label"
       className={cn(
-        "duration-200 flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 outline-none ring-sidebar-ring transition-[margin,opa] ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+        "duration-200 flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 outline-none ring-sidebar-ring transition-[margin,opacity] ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
         "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
         className
       )}
