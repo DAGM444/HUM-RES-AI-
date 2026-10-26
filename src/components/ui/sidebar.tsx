@@ -107,7 +107,7 @@ const SidebarProvider = React.forwardRef<
             } as React.CSSProperties
           }
           className={cn(
-            "group/sidebar-wrapper flex min-h-screen w-full has-[[data-variant=inset]]:bg-sidebar",
+            "group/sidebar-wrapper flex min-h-screen w-full items-start has-[[data-variant=inset]]:bg-sidebar",
             className
           )}
           ref={ref}
@@ -146,7 +146,7 @@ const Sidebar = React.forwardRef<
       return (
         <div
           className={cn(
-            "flex h-full w-[--sidebar-width] flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border",
+            "flex h-full w-[--sidebar-width] flex-col bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800",
             className
           )}
           ref={ref}
@@ -162,7 +162,7 @@ const Sidebar = React.forwardRef<
         <>
           {openMobile && (
             <div
-              className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
+              className="fixed inset-0 z-50 bg-black/60 dark:bg-black/80 backdrop-blur-sm"
               onClick={() => setOpenMobile(false)}
             />
           )}
@@ -170,7 +170,7 @@ const Sidebar = React.forwardRef<
             ref={ref}
             data-state={openMobile ? "expanded" : "collapsed"}
             className={cn(
-              "fixed inset-y-0 z-50 h-full w-[--sidebar-width] bg-sidebar text-sidebar-foreground shadow-lg transition-transform duration-200 ease-in-out flex flex-col border-r border-sidebar-border",
+              "fixed inset-y-0 z-50 h-full w-[--sidebar-width] bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xl transition-transform duration-200 ease-in-out flex flex-col border-r border-slate-200 dark:border-slate-800",
               side === "left" ? "left-0" : "right-0",
               openMobile ? "translate-x-0" : side === "left" ? "-translate-x-full" : "translate-x-full",
               className
@@ -189,7 +189,7 @@ const Sidebar = React.forwardRef<
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}
         className={cn(
-          "group relative h-screen bg-sidebar text-sidebar-foreground transition-all duration-300 ease-in-out flex flex-col shrink-0 border-r border-sidebar-border select-none",
+          "group sticky top-0 h-screen overflow-y-auto bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition-all duration-300 ease-in-out flex flex-col shrink-0 border-r border-slate-200 dark:border-slate-800 select-none",
           state === "collapsed" ? "w-16" : "w-64",
           className
         )}
@@ -236,7 +236,7 @@ const SidebarInset = React.forwardRef<
     <main
       ref={ref}
       className={cn(
-        "relative flex min-h-screen flex-1 flex-col bg-background min-w-0 transition-all duration-300 ease-in-out",
+        "relative flex min-h-screen flex-1 flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-w-0 transition-all duration-300 ease-in-out",
         "peer-data-[variant=inset]:min-h-[calc(100vh-1rem)] md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
         className
       )}
@@ -320,7 +320,7 @@ const SidebarGroupLabel = React.forwardRef<
       ref={ref}
       data-sidebar="group-label"
       className={cn(
-        "duration-200 flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-foreground/70 outline-none ring-sidebar-ring transition-[margin,opacity] ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+        "duration-200 flex h-8 shrink-0 items-center rounded-md px-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 outline-none ring-sidebar-ring transition-[margin,opacity] ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
         "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
         className
       )}

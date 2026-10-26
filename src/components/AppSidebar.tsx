@@ -132,14 +132,14 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border">
+      <SidebarHeader className="border-b border-slate-200 dark:border-slate-800">
         {isCollapsed ? (
           <div className="flex items-center justify-center py-1">
             <Button
               variant="ghost"
               size="icon"
               onClick={toggleSidebar}
-              className="h-8 w-8 text-primary hover:bg-sidebar-accent cursor-pointer rounded-lg"
+              className="h-8 w-8 text-indigo-600 dark:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer rounded-lg"
               title="Expand sidebar"
               aria-label="Expand sidebar"
             >
@@ -153,8 +153,8 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
               onClick={() => handleItemClick('/dashboard')}
               title="HR Management"
             >
-              <Building2 className="h-6 w-6 text-primary shrink-0" />
-              <span className="font-semibold tracking-tight text-sidebar-foreground truncate">
+              <Building2 className="h-6 w-6 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <span className="font-semibold tracking-tight text-slate-900 dark:text-slate-100 truncate">
                 HR Management
               </span>
             </div>
@@ -162,7 +162,7 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
               variant="ghost"
               size="icon"
               onClick={toggleSidebar}
-              className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent cursor-pointer rounded-lg"
+              className="h-7 w-7 shrink-0 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer rounded-lg"
               title="Collapse sidebar"
               aria-label="Collapse sidebar"
             >
@@ -177,7 +177,7 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
           {!isCollapsed ? (
             <SidebarGroupLabel>Application</SidebarGroupLabel>
           ) : (
-            <div className="my-1 border-t border-sidebar-border" />
+            <div className="my-1 border-t border-slate-200 dark:border-slate-800" />
           )}
           <SidebarGroupContent>
             <SidebarMenu>
@@ -189,10 +189,12 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
                       onClick={() => handleItemClick(item.path)}
                       title={item.title}
                       className={`cursor-pointer transition-colors ${
-                        active ? 'bg-accent text-accent-foreground font-semibold' : ''
+                        active
+                          ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold'
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-slate-100'
                       } ${isCollapsed ? 'justify-center px-0' : ''}`}
                     >
-                      <item.icon className={`shrink-0 ${active ? 'text-primary' : ''}`} />
+                      <item.icon className={`shrink-0 ${active ? 'text-indigo-600 dark:text-indigo-400' : ''}`} />
                       {!isCollapsed && <span className="truncate">{item.title}</span>}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -206,7 +208,7 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
           {!isCollapsed ? (
             <SidebarGroupLabel>HR Functions</SidebarGroupLabel>
           ) : (
-            <div className="my-1 border-t border-sidebar-border" />
+            <div className="my-1 border-t border-slate-200 dark:border-slate-800" />
           )}
           <SidebarGroupContent>
             <SidebarMenu>
@@ -218,10 +220,12 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
                       onClick={() => handleItemClick(item.path)}
                       title={item.title}
                       className={`cursor-pointer transition-colors ${
-                        active ? 'bg-accent text-accent-foreground font-semibold' : ''
+                        active
+                          ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-semibold'
+                          : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-slate-100'
                       } ${isCollapsed ? 'justify-center px-0' : ''}`}
                     >
-                      <item.icon className={`shrink-0 ${active ? 'text-primary' : ''}`} />
+                      <item.icon className={`shrink-0 ${active ? 'text-indigo-600 dark:text-indigo-400' : ''}`} />
                       {!isCollapsed && <span className="truncate">{item.title}</span>}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -232,13 +236,13 @@ export function AppSidebar({ onNavigate }: AppSidebarProps) {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border">
+      <SidebarFooter className="border-t border-slate-200 dark:border-slate-800">
         {!isCollapsed ? (
-          <div className="px-3 py-2 text-xs text-muted-foreground truncate">
+          <div className="px-3 py-2 text-xs text-slate-500 dark:text-slate-400 truncate">
             HR Management v1.3 (Phase 3)
           </div>
         ) : (
-          <div className="py-2 text-center text-[10px] text-muted-foreground font-mono" title="HR Management v1.3">
+          <div className="py-2 text-center text-[10px] text-slate-500 dark:text-slate-400 font-mono" title="HR Management v1.3">
             v1.3
           </div>
         )}

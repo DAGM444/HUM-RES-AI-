@@ -28,9 +28,13 @@ import {
   UserX,
   Eye,
   Edit3,
-  Loader2
+  Loader2,
+  Sun,
+  Moon,
+  Laptop
 } from 'lucide-react';
 import { authHeader } from '../lib/auth';
+import { useTheme } from '../lib/theme';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:5000';
 
@@ -110,6 +114,7 @@ interface HRSettingsProps {
 }
 
 export function HRSettings({ onNavigateToProfile }: HRSettingsProps) {
+  const { theme, setTheme, isDark } = useTheme();
   const [settings, setSettings] = useState(initialSettings);
   const [savedSettings, setSavedSettings] = useState(initialSettings);
   const [activeTab, setActiveTab] = useState('performance');
@@ -644,6 +649,69 @@ export function HRSettings({ onNavigateToProfile }: HRSettingsProps) {
 
   const renderGeneralSettings = () => (
     <div className="space-y-6">
+      {/* Theme & Appearance Configuration */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sun className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+            Appearance &amp; Theme
+          </CardTitle>
+          <CardDescription>
+            Customize your visual experience with modern light and dark themes
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button
+              type="button"
+              onClick={() => setTheme('light')}
+              className={`p-4 rounded-xl border flex flex-col items-center gap-2 cursor-pointer transition-all ${
+                theme === 'light'
+                  ? 'border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 ring-2 ring-indigo-600/30 font-semibold'
+                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Sun className="h-6 w-6 text-amber-500" />
+              <div className="text-center">
+                <p className="text-sm font-medium">Light Mode</p>
+                <p className="text-xs text-muted-foreground">Clean, polished palette</p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setTheme('dark')}
+              className={`p-4 rounded-xl border flex flex-col items-center gap-2 cursor-pointer transition-all ${
+                theme === 'dark'
+                  ? 'border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 ring-2 ring-indigo-600/30 font-semibold'
+                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Moon className="h-6 w-6 text-indigo-500" />
+              <div className="text-center">
+                <p className="text-sm font-medium">Dark Mode</p>
+                <p className="text-xs text-muted-foreground">Modern slate &amp; indigo</p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setTheme('system')}
+              className={`p-4 rounded-xl border flex flex-col items-center gap-2 cursor-pointer transition-all ${
+                theme === 'system'
+                  ? 'border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 ring-2 ring-indigo-600/30 font-semibold'
+                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Laptop className="h-6 w-6 text-slate-500" />
+              <div className="text-center">
+                <p className="text-sm font-medium">System Preference</p>
+                <p className="text-xs text-muted-foreground">Match OS (${isDark ? 'Dark' : 'Light'})</p>
+              </div>
+            </button>
+          </div>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

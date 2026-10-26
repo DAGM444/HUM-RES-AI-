@@ -133,7 +133,7 @@ export function DeleteEmployeeDialog({
             </div>
           )}
 
-          <div className="rounded-lg border p-4 bg-muted/30 space-y-2 text-sm">
+          <div className="rounded-lg border border-slate-200 dark:border-slate-800 p-4 bg-slate-50 dark:bg-slate-800/50 space-y-2 text-sm text-slate-900 dark:text-slate-100">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Employee:</span>
               <span className="font-semibold text-foreground">{employee.name}</span>

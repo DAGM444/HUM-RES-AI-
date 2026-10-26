@@ -5,6 +5,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Building2, LogIn, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { saveAuth, AuthUser } from '../lib/auth';
+import { ThemeToggle } from './ThemeToggle';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:5000';
 
@@ -48,7 +49,10 @@ export function Login({ onLoginSuccess }: LoginProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/40 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950/40 flex items-center justify-center p-4 transition-colors duration-200 relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle className="border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm" />
+      </div>
       <div className="w-full max-w-md space-y-6">
 
         {/* Brand header */}
@@ -57,7 +61,7 @@ export function Login({ onLoginSuccess }: LoginProps) {
             <Building2 className="h-7 w-7 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">HR Management</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">HR Management</h1>
             <p className="text-sm text-muted-foreground">Sign in to access your workspace</p>
           </div>
         </div>

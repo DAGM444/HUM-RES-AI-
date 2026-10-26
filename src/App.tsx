@@ -24,6 +24,7 @@ import { PerformanceReportsList } from './components/PerformanceReportsList';
 import { PerformanceReport } from './components/PerformanceReport';
 import { DataAnalytics } from './components/DataAnalytics';
 import { isAuthenticated, getStoredUser, AuthUser } from './lib/auth';
+import { ThemeProvider } from './lib/theme';
 
 function LoginPage({
   user,
@@ -189,19 +190,21 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route
-          path="/login"
-          element={
-            <LoginPage user={user} onLoginSuccess={handleLoginSuccess} />
-          }
-        />
-        <Route
-          path="/*"
-          element={<ProtectedRoutes user={user} onLogout={handleLogout} />}
-        />
-      </Routes>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route
+            path="/login"
+            element={
+              <LoginPage user={user} onLoginSuccess={handleLoginSuccess} />
+            }
+          />
+          <Route
+            path="/*"
+            element={<ProtectedRoutes user={user} onLogout={handleLogout} />}
+          />
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
