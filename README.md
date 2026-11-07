@@ -28,18 +28,18 @@ A modern, production-ready, containerized Human Resource Management platform bui
 
 ##  Key Features
 
-* ** Secure Authentication & RBAC:** JWT-protected routes and role-based access control for administrators, HR staff, and general employees.
-* ** Dynamic Employee Directory:**
-  * Real-time employee directory with advanced search and filtering.
-  * Interactive **Add Employee Modal** with client/server validation and optimistic UI updates.
-  * **3-Dots Action Dropdown Menu** per row supporting Edit, View Profile, and Delete/Deactivate actions.
-  * **CSV Data Export Engine** to download organization-wide employee reports directly from the UI.
-* **  Modern UI & Dark Mode:** Sleek slate/zinc professional palette with a smooth light/dark mode switcher that persists across user sessions.
-* ** Task & Approval Workflows:** Interactive action queues for reviewing and processing organizational requests.
-* ** Time & Attendance:** Comprehensive tracking for employee work hours, attendance logs, and leave requests.
-* ** Incident Management:** Record, log, track, and resolve workplace incidents seamlessly.
-* ** AI-Powered HR Assistant:** Integrated Gemini API chatbot trained to respond dynamically to employee policy, benefits, and structural queries.
-* ** Automated Notifications:** Backend email dispatch via Nodemailer for system updates, status changes, and approvals.
+*  Secure Authentication & RBAC:** JWT-protected routes and role-based access control for administrators, HR staff, and general employees.
+*  Dynamic Employee Directory:
+    * Real-time employee directory with advanced search and filtering.
+    * Interactive **Add Employee Modal** with client/server validation and optimistic UI updates.
+    * **3-Dots Action Dropdown Menu** per row supporting Edit, View Profile, and Delete/Deactivate actions.
+    * **CSV Data Export Engine** to download organization-wide employee reports directly from the UI.
+*   Modern UI & Dark Mode:** Sleek slate/zinc professional palette with a smooth light/dark mode switcher that persists across user sessions.
+*  Task & Approval Workflows:** Interactive action queues for reviewing and processing organizational requests.
+*  Time & Attendance:** Comprehensive tracking for employee work hours, attendance logs, and leave requests.
+*  Incident Management:** Record, log, track, and resolve workplace incidents seamlessly.
+*  AI-Powered HR Assistant:** Integrated Gemini API chatbot trained to respond dynamically to employee policy, benefits, and structural queries.
+*  Automated Notifications:** Backend email dispatch via Nodemailer for system updates, status changes, and approvals.
 
 ---
 
